@@ -1,0 +1,29 @@
+{
+  "name": "@grill-logic/skills",
+  "version": "1.0.0",
+  "description": "Epistemic Truth Maintenance and Argument-Driven Premise Validation for Agentic AI Systems",
+  "type": "module",
+  "license": "MIT",
+  "author": "paragon-ux",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paragon-ux/grill-logic.git"
+  },
+  "homepage": "https://github.com/paragon-ux/grill-logic#readme",
+  "bugs": {
+    "url": "https://github.com/paragon-ux/grill-logic/issues"
+  },
+  "keywords": [
+    "antigravity",
+    "claude-code",
+    "codex",
+    "skills",
+    "epistemic-validation",
+    "premise-validation",
+    "ccot",
+    "truth-maintenance"
+  ],
+  "scripts": {
+    "test": "node scripts/test-skills.mjs && node scripts/test-ledger.mjs"
+  }
+}

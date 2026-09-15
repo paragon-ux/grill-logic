@@ -1,0 +1,6 @@
+interface:
+  display_name: "Grill Logic"
+  short_description: "Grill architectural premises and inferential leaps before execution"
+  default_prompt: "Deconstruct this proposal into Standard Form (P1..Pn ⊢ C), run multi-round epistemic challenge, update the logical ledger, and gate execution."
+policy:
+  allow_implicit_invocation: false
