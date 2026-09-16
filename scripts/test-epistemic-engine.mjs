@@ -2,7 +2,7 @@
 
 /**
  * test-epistemic-engine.mjs: Rigorous Automated Verification of
- * Epistemic State Engine & Fail-Closed Invariants.
+ * Epistemic State Engine, Deterministic Invariant Solver & Fail-Closed Invariants.
  */
 
 import { execSync } from 'child_process';
@@ -36,7 +36,7 @@ function runCmd(cmd) {
 }
 
 console.log('\n============================================================');
-console.log('🧪 GRILL-LOGIC TEST SUITE: Epistemic Engine & Fail-Closed Guards');
+console.log('🧪 GRILL-LOGIC TEST SUITE: Epistemic Engine & Invariant Solver');
 console.log('============================================================\n');
 
 // Teardown before starting
@@ -60,10 +60,33 @@ const invalidMachine = runCmd('node scripts/grill-state.mjs init --machine inval
 assert(invalidMachine.code !== 0, 'Invalid machine type fails closed');
 assert(invalidMachine.stderr.includes('INVALID_MACHINE_TYPE'), 'Invalid machine emits INVALID_MACHINE_TYPE diagnostic');
 
-// 2. Token-Locked Subagent Handshake Tests
-console.log('\n2. Testing Token-Locked Subagent Handshake...');
+// 2. Deterministic Invariant Solver Tests (DMAD Methodological Diversity)
+console.log('\n2. Testing Deterministic Invariant Solver...');
 
-const initSuccess = runCmd('node scripts/grill-state.mjs init --machine autonomous --input "Use SQLite WAL over NFS for distributed workers"');
+// Invariant 1: SQLite WAL over NFS with concurrent writers
+const sqliteNfsSolve = runCmd('node scripts/grill-state.mjs check-gate --proposal "sqlite over nfs cluster with multi-writer containers"');
+assert(sqliteNfsSolve.code !== 0, 'SQLite over NFS multi-writer fails closed in solver');
+assert(sqliteNfsSolve.stderr.includes('INVARIANT_SOLVER_VIOLATION'), 'Emits INVARIANT_SOLVER_VIOLATION diagnostic');
+assert(sqliteNfsSolve.stderr.includes('SYS-INV-01'), 'Identifies physical system invariant SYS-INV-01');
+
+// Invariant 2: Linux io_uring on Windows NT
+const iouringWinSolve = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use io_uring for async networking on windows servers"');
+assert(iouringWinSolve.code !== 0, 'io_uring on Windows fails closed in solver');
+assert(iouringWinSolve.stderr.includes('SYS-INV-02'), 'Identifies OS kernel incompatibility SYS-INV-02');
+
+// Invariant 3: Mobile distributed two-way catalog sync
+const mobileSyncSolve = runCmd('node scripts/grill-state.mjs check-gate --proposal "React Native offline-first mirror 120,000 catalog items with two-way reconciliation"');
+assert(mobileSyncSolve.code !== 0, 'Mobile 120k item two-way sync fails closed in solver');
+assert(mobileSyncSolve.stderr.includes('SYS-INV-03'), 'Identifies mobile consistency invariant SYS-INV-03');
+
+// Clean proposal passes solver
+const cleanSolve = runCmd('node scripts/grill-state.mjs check-gate --proposal "Deploy PostgreSQL 16 on AWS RDS with pgbouncer connection pooling"');
+assert(cleanSolve.code === 0, 'Clean proposal passes invariant solver');
+
+// 3. Token-Locked Subagent Handshake & Round 1 Structural Protocol
+console.log('\n3. Testing Token-Locked Subagent Handshake & Round Protocol...');
+
+const initSuccess = runCmd('node scripts/grill-state.mjs init --machine autonomous --input "Mount SQLite over NFS for distributed workers"');
 assert(initSuccess.code === 0, 'Valid autonomous proposal initializes session');
 assert(fs.existsSync('.grill-logic/state.json'), '.grill-logic/state.json was created');
 
@@ -73,59 +96,56 @@ assert(Boolean(validToken && validToken.startsWith('dmad_tok_')), `Session gener
 assert(stateData.current_state === 'AWAITING_SUBAGENT_DISPATCH', 'State is locked in AWAITING_SUBAGENT_DISPATCH');
 
 // Subagent token mismatch
-const tokenMismatch = runCmd('node scripts/grill-state.mjs record-subagent-audit --token invalid_token_123 --risk HIGH --probe-tool grep_search --probe-finding "test"');
+const tokenMismatch = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token invalid_token_123 --payload "{\\"conclusion_status\\":\\"CHALLENGED\\",\\"probe\\":{\\"tool\\":\\"grep_search\\",\\"finding\\":\\"test\\"}}"`);
 assert(tokenMismatch.code !== 0, 'Subagent audit with invalid token fails closed');
 assert(tokenMismatch.stderr.includes('DISPATCH_TOKEN_MISMATCH'), 'Mismatch emits DISPATCH_TOKEN_MISMATCH diagnostic');
 
 // Subagent missing empirical probe
-const missingProbe = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${validToken} --risk HIGH --verdict REJECTED`);
+const missingProbe = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${validToken} --payload "{\\"conclusion_status\\":\\"REJECTED\\"}"`);
 assert(missingProbe.code !== 0, 'Subagent audit without empirical probe fails closed');
 assert(missingProbe.stderr.includes('EMPIRICAL_PROBE_MISSING'), 'Missing probe emits EMPIRICAL_PROBE_MISSING diagnostic');
 
-// Valid subagent audit
-const validAudit = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${validToken} --risk HIGH --syco 0.1 --conf 0.9 --fixed-set false --probe-tool grep_search --probe-finding "Official docs confirm POSIX fcntl byte-range locking fails over NFS" --verdict REJECTED --rule "When designing concurrent microservices, DO NOT use SQLite over NFS because fcntl locking fails over network filesystems."`);
-assert(validAudit.code === 0, 'Valid subagent audit recorded successfully');
+// Structural Round Gate: Subagent CANNOT log SUPPORTED in Round 1
+const prematureSupported = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${validToken} --payload "{\\"conclusion_status\\":\\"SUPPORTED\\",\\"probe\\":{\\"tool\\":\\"run_command\\",\\"finding\\":\\"valid\\"}}"`);
+assert(prematureSupported.code !== 0, 'Subagent cannot log SUPPORTED in Round 1');
+assert(prematureSupported.stderr.includes('ROUND_PROTOCOL_VIOLATION'), 'Round 1 SUPPORTED emits ROUND_PROTOCOL_VIOLATION diagnostic');
+
+// Valid Round 1 Fatal Refutation (SQLite over NFS)
+const fatalRefutation = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${validToken} --payload "{\\"premise_status\\":\\"FALSIFIED\\",\\"inference_status\\":\\"INVALID_LEAP\\",\\"conclusion_status\\":\\"REJECTED\\",\\"probe\\":{\\"tool\\":\\"grep_search\\",\\"finding\\":\\"Official SQLite docs confirm POSIX fcntl byte-range locking fails over NFS\\"},\\"rule\\":\\"When designing concurrent microservices, DO NOT use SQLite over NFS because fcntl locking fails over network filesystems.\\"}"`);
+assert(fatalRefutation.code === 0, 'Valid subagent fatal refutation recorded successfully');
 
 const stateAfterAudit = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
 assert(stateAfterAudit.subagent_called === true, 'subagent_called flag set to true');
-assert(stateAfterAudit.verdict === 'REJECTED', 'Audit verdict set to REJECTED');
+assert(stateAfterAudit.conclusion_status === 'REJECTED', 'Audit conclusion_status set to REJECTED');
+assert(stateAfterAudit.premise_status === 'FALSIFIED', 'Audit premise_status set to FALSIFIED');
 assert(stateAfterAudit.probes_executed.length === 1, 'Empirical probe logged in state');
 
-// 3. Asymmetric Authority Guard Tests (W_subagent > W_LLM)
-console.log('\n3. Testing Asymmetric Override & Sign-Off Guards...');
+// 4. Asymmetric Authority & Ledger Commit Format
+console.log('\n4. Testing Asymmetric Override & Ledger Formatting...');
 
 // Main LLM (W=0.2) tries to commit SUPPORTED over subagent (W=0.8) REJECTED
 const illegalOverride = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED');
 assert(illegalOverride.code !== 0, 'LLM override of subagent rejection fails closed');
 assert(illegalOverride.stderr.includes('ASYMMETRIC_OVERRIDE_FORBIDDEN'), 'Illegal override emits ASYMMETRIC_OVERRIDE_FORBIDDEN diagnostic');
 
-// Commit REJECTED succeeds and writes Contrastive Rule to LOGICAL_LEDGER.md
+// Commit REJECTED succeeds and writes Contrastive Rule to LOGICAL_LEDGER.md with precise status
 const validRejectCommit = runCmd('node scripts/grill-state.mjs commit --status REJECTED');
 assert(validRejectCommit.code === 0, 'Committing REJECTED audit succeeds');
 assert(!fs.existsSync('.grill-logic/state.json'), 'Session state cleaned up after commit');
 
 const ledgerContent = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
 assert(ledgerContent.includes('**ARG-01**'), 'LOGICAL_LEDGER.md contains ARG-01');
-assert(ledgerContent.includes('REJECTED'), 'Status is REJECTED in ledger');
+assert(ledgerContent.includes('**REJECTED**<br>*(False Axiom)*'), 'Status formatted with precise False Axiom tag');
 assert(ledgerContent.includes('DO NOT use SQLite over NFS'), 'Contrastive Refutation Rule recorded in ledger');
 
-// 4. Pre-Flight Firewall (Fail-Closed Negative Constraint Check)
-console.log('\n4. Testing Pre-Flight Negative Constraint Firewall...');
-
-// Colliding proposal
-const firewallHit = runCmd('node scripts/grill-state.mjs check-gate --proposal "Let us mount sqlite over nfs for container concurrency"');
-assert(firewallHit.code !== 0, 'Colliding proposal fails closed against active REJECTED rule');
-assert(firewallHit.stderr.includes('EPISTEMIC_FIREWALL_VIOLATION'), 'Firewall emits EPISTEMIC_FIREWALL_VIOLATION diagnostic');
+// Pre-flight firewall detects committed active rule
+const firewallHit = runCmd('node scripts/grill-state.mjs check-gate --proposal "Let us use sqlite over nfs for our microservice workers"');
+assert(firewallHit.code !== 0, 'Colliding proposal fails closed against active ledger rule');
 assert(firewallHit.stderr.includes('ARG-01'), 'Firewall diagnostic identifies blocking argument ID ARG-01');
 
-// Non-colliding proposal
-const firewallPass = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use PostgreSQL on Amazon RDS with connection pooling"');
-assert(firewallPass.code === 0, 'Non-colliding proposal passes pre-flight firewall');
-
-// 5. Human Sequential Interview (Machine 2) Behavioral S_human Tests
+// 5. Human Sequential Interview (Machine 2) Behavioral Stagnation Tests
 console.log('\n5. Testing Human HITL Stagnation Alert & W_human Sovereignty...');
 
-// Initialize Human Machine
 const initHuman = runCmd('node scripts/grill-state.mjs init --machine human --input "Microservices boundary decomposition"');
 assert(initHuman.code === 0, 'Human HITL session initialized');
 
@@ -133,53 +153,59 @@ assert(initHuman.code === 0, 'Human HITL session initialized');
 runCmd('node scripts/grill-state.mjs record-user-turn --new-prop false --choice "Option A"');
 runCmd('node scripts/grill-state.mjs record-user-turn --new-prop false --choice "Option A again"');
 
-const humanStateBeforeAlert = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
-assert(humanStateBeforeAlert.epistemic_context.s_human.consecutive_stagnant_turns === 2, 'Consecutive stagnant turns is 2');
+const humanState1 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(humanState1.epistemic_context.s_human.consecutive_stagnant_turns === 2, 'Consecutive stagnant turns is 2');
 
 // Turn 3: triggers stagnation alert
-const stagnantTurn3 = runCmd('node scripts/grill-state.mjs record-user-turn --new-prop false --choice "Still Option A"');
-assert(stagnantTurn3.stderr.includes('HUMAN_STAGNATION_ALERT'), 'Turn 3 emits HUMAN_STAGNATION_ALERT diagnostic');
+const turn3 = runCmd('node scripts/grill-state.mjs record-user-turn --new-prop false --choice "Option A third time"');
+assert(turn3.code !== 0, 'Turn 3 emits HUMAN_STAGNATION_ALERT diagnostic');
+assert(turn3.stderr.includes('HUMAN_STAGNATION_ALERT'), 'Diagnostic contains HUMAN_STAGNATION_ALERT code');
 
-// Commit blocked while diagnostic required
-const commitBlocked = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED');
-assert(commitBlocked.code !== 0, 'Commit blocked while human stagnation diagnostic is pending');
+// Commit blocked while stagnation diagnostic is pending
+const blockedCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED');
+assert(blockedCommit.code !== 0, 'Commit blocked while human stagnation diagnostic is pending');
 
-// Acknowledge diagnostic query per W_human sovereignty
-const ackDiagnostic = runCmd('node scripts/grill-state.mjs record-diagnostic-ack');
-assert(ackDiagnostic.code === 0, 'Diagnostic acknowledgment succeeds');
+// Acknowledge diagnostic
+const ack = runCmd('node scripts/grill-state.mjs record-diagnostic-ack');
+assert(ack.code === 0, 'Diagnostic acknowledgment succeeds');
 
-// Commit unblocked
-const humanCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED --rule "Human acknowledged small team operational trade-offs"');
+// Commit human confirmed decision
+const humanCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED --rule "Human sovereign architecture confirmed"');
 assert(humanCommit.code === 0, 'Human confirmed decision committed as SUPPORTED');
 
-const finalLedger = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
-assert(finalLedger.includes('**ARG-02**'), 'ARG-02 committed to ledger');
-assert(finalLedger.includes('Human HITL (W_human=1.0'), 'ARG-02 contains Human HITL metadata');
+const ledgerAfterHuman = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(ledgerAfterHuman.includes('**ARG-02**'), 'ARG-02 committed to ledger');
+assert(ledgerAfterHuman.includes('Human HITL (W_human=1.0)'), 'ARG-02 contains Human HITL metadata');
 
-// 6. Multi-Round Epistemic Flow Tests (CHALLENGE_ISSUED -> record-llm-response -> Evaluation -> Sign-off)
-console.log('\n6. Testing Multi-Round Epistemic Flow & Transition Guards...');
+// 6. Multi-Round Epistemic Flow with Structured Payloads & Auto-Signoff
+console.log('\n6. Testing Multi-Round Epistemic Flow with Structured Payloads & Auto-Signoff...');
 
-// Initialize session
-const initMulti = runCmd('node scripts/grill-state.mjs init --machine autonomous --input "Client SQLite offline sync for 120k menu items"');
-assert(initMulti.code === 0, 'Multi-round autonomous proposal initialized');
-const multiState1 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
-const mTok = multiState1.dispatch_token;
+const multiInit = runCmd('node scripts/grill-state.mjs init --machine autonomous --input "Offline-first React Native food delivery cart sync"');
+assert(multiInit.code === 0, 'Multi-round autonomous proposal initialized');
 
-// Round 1: Subagent records CHALLENGE_ISSUED
-const round1Challenge = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --risk HIGH --probe-tool run_command --probe-finding "Catalog size is 174MB, unfeasible for subway offline sync" --verdict CHALLENGE_ISSUED --rule "DO NOT sync 120k items locally"`);
-assert(round1Challenge.code === 0, 'Subagent records CHALLENGE_ISSUED');
+const mState = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+const mTok = mState.dispatch_token;
+
+// Round 1: Subagent records challenge with structured payload
+const subagentChallenge = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --payload "{\\"conclusion_status\\":\\"CHALLENGED\\",\\"premise_status\\":\\"CONFIRMED\\",\\"inference_status\\":\\"INVALID_LEAP\\",\\"probe\\":{\\"tool\\":\\"run_command\\",\\"finding\\":\\"120,000 items equals 118MB uncompressed JSON; mobile cold-start exceeds 15 seconds\\"},\\"rule\\":\\"DO NOT mirror entire catalogs to mobile devices; mobile inventory has high volatility.\\"}"`);
+assert(subagentChallenge.code === 0, 'Subagent records CHALLENGED');
 
 const multiState2 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
 assert(multiState2.current_state === 'AWAITING_LLM_RESPONSE', 'State transitioned to AWAITING_LLM_RESPONSE');
-assert(multiState2.epistemic_context.s_llm.sycophancy_score === null, 'S_LLM sycophancy is unassessed (null) at Round 1');
+assert(multiState2.conclusion_status === 'CHALLENGED', 'conclusion_status set to CHALLENGED');
 
-// Guard: LLM cannot commit while challenge unaddressed
-const unaddressedCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED');
-assert(unaddressedCommit.code !== 0, 'Commit fails closed when challenge is unaddressed');
-assert(unaddressedCommit.stderr.includes('CHALLENGE_UNADDRESSED'), 'Emits CHALLENGE_UNADDRESSED diagnostic');
+// Round Protocol Guard: Subagent cannot record audit while awaiting LLM response
+const subagentOutOfTurn = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --payload "{\\"conclusion_status\\":\\"SUPPORTED\\",\\"probe\\":{\\"tool\\":\\"run_command\\",\\"finding\\":\\"premature\\"}}"`);
+assert(subagentOutOfTurn.code !== 0, 'Subagent cannot record audit during AWAITING_LLM_RESPONSE');
+assert(subagentOutOfTurn.stderr.includes('ROUND_PROTOCOL_VIOLATION'), 'Emits ROUND_PROTOCOL_VIOLATION diagnostic');
 
-// Round 2: LLM records counter-hypothesis
-const llmCounter = runCmd(`node scripts/grill-state.mjs record-llm-response --token ${mTok} --type counter --response "Persist draft cart locally and use idempotent HTTP retry queue with client UUID"`);
+// Guard: LLM cannot commit while challenge is unaddressed
+const prematureCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED');
+assert(prematureCommit.code !== 0, 'Commit fails closed when challenge is unaddressed');
+assert(prematureCommit.stderr.includes('CHALLENGE_UNADDRESSED'), 'Emits CHALLENGE_UNADDRESSED diagnostic');
+
+// Round 2: LLM records counter-hypothesis with structured payload
+const llmCounter = runCmd(`node scripts/grill-state.mjs record-llm-response --token ${mTok} --payload "{\\"type\\":\\"counter\\",\\"response\\":\\"Persist draft cart locally and use idempotent HTTP retry queue with client UUID\\"}"`);
 assert(llmCounter.code === 0, 'Target LLM records counter-hypothesis');
 
 const multiState3 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
@@ -191,24 +217,68 @@ const pendingCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPO
 assert(pendingCommit.code !== 0, 'Commit fails closed when evaluation is pending');
 assert(pendingCommit.stderr.includes('EVALUATION_PENDING'), 'Emits EVALUATION_PENDING diagnostic');
 
-// Round 2 Evaluation: Subagent evaluates LLM counter-hypothesis using deterministic structural counts
-const subagentEval = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --unearned-concessions 0 --total-concessions 1 --unexamined-counter-evidence 0 --total-counter-evidence 3 --hypothesis-shifted true --probe-tool view_file --probe-finding "AsyncStorage + Idempotency-Key header is sound and eliminates distributed database complexity" --verdict SUPPORTED --rule "Verified via empirical probe view_file"`);
-assert(subagentEval.code === 0, 'Subagent logs evaluated audit using deterministic structural counts');
+// Round 2 Evaluation: Subagent records SUPPORTED on verified C' with AUTO-SIGNOFF
+const subagentEval = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --payload "{\\"premise_status\\":\\"CONFIRMED\\",\\"inference_status\\":\\"VALID\\",\\"conclusion_status\\":\\"SUPPORTED\\",\\"probe\\":{\\"tool\\":\\"view_file\\",\\"finding\\":\\"AsyncStorage + Idempotency-Key header is sound and eliminates distributed database complexity\\"},\\"rule\\":\\"Verified via empirical probe view_file\\"}"`);
+assert(subagentEval.code === 0, 'Subagent logs evaluated audit with SUPPORTED');
 
 const multiState4 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
-assert(multiState4.epistemic_context.s_llm.sycophancy_score === 0, 'S_LLM sycophancy is deterministically calculated as 0.0 (0 unearned / 1 concession)');
-assert(multiState4.epistemic_context.s_llm.confirmation_bias_score === 0, 'S_LLM confirmation bias is deterministically calculated as 0.0 (0 unexamined / 3 counter-evidence)');
-assert(multiState4.epistemic_context.s_llm.fixed_mental_set === false, 'Fixed mental set is false (hypothesis shifted from original conclusion)');
-assert(multiState4.epistemic_context.s_llm.risk_level === 'LOW', 'Risk level is deterministically computed as LOW');
+assert(multiState4.current_state === 'SUBAGENT_SIGNED_OFF', 'State transitioned to SUBAGENT_SIGNED_OFF');
+assert(multiState4.conclusion_status === 'SUPPORTED', 'Conclusion status set to SUPPORTED');
+assert(multiState4.subagent_signoff === true, 'subagent_signoff automatically set to true');
 
-const subagentSignoff = runCmd(`node scripts/grill-state.mjs signoff-subagent --token ${mTok}`);
-assert(subagentSignoff.code === 0, 'Subagent executes signoff');
-
+// Commit succeeds directly (no redundant signoff-subagent command required!)
 const multiCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED --rule "Client draft cart persistence with Idempotency-Key retry queue verified"');
-assert(multiCommit.code === 0, 'Commit succeeds as SUPPORTED after subagent sign-off');
+assert(multiCommit.code === 0, 'Commit succeeds as SUPPORTED with auto-signoff');
 
 const multiLedger = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
 assert(multiLedger.includes('Client draft cart persistence'), 'Multi-round counter-hypothesis committed to ledger');
+
+// 7. Testing Interpretation Gate (/add-logic), NeSy Solver Taxonomy & Procedural Advance
+console.log('\n7. Testing Interpretation Gate, NeSy Solver Taxonomy & Procedural Advance...');
+
+// 7.1 add-logic commits baseline as FORMULATED with tallies
+const addLogicResult = runCmd('node scripts/grill-state.mjs add-logic --prompt "Deploy Redis cache for Postgres queries" --premises \'["High database read latency", "Redis offers sub-millisecond lookups"]\' --conclusion "Deploy Redis cache"');
+assert(addLogicResult.code === 0, 'add-logic command succeeds');
+
+const formulatedLedger = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(formulatedLedger.includes('**FORMULATED**'), 'LOGICAL_LEDGER.md records baseline as FORMULATED');
+assert(formulatedLedger.includes('Interpretation Gate'), 'Records Interpretation Gate metadata');
+
+const formulatedState = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(formulatedState.canonical_state === 'S_U0B_ADD_LOGIC', 'State initialized to S_U0B_ADD_LOGIC');
+assert(formulatedState.tally.premises.agree === 1, 'Premise agree tally initialized to 1');
+assert(formulatedState.tally.solution.agree === 0, 'Solution agree tally initialized to 0');
+
+// 7.2 NeSy Solver: formally_invalid triggers auto-refutation
+const nesyConflict = runCmd('node scripts/grill-state.mjs validate-nesy --payload "{\\"dependencies\\":[[\\"rule2\\",\\"rule1\\"]],\\"expressions\\":[{\\"left\\":\\"database_engine\\",\\"operator\\":\\"==\\",\\"right\\":\\"sqlite\\"},{\\"left\\":\\"storage_type\\",\\"operator\\":\\"!=\\",\\"right\\":\\"nfs\\"}]}" --facts "{\\"database_engine\\":\\"sqlite\\",\\"storage_type\\":\\"nfs\\"}"');
+assert(nesyConflict.code !== 0, 'NeSy formally_invalid fails closed');
+assert(nesyConflict.stderr.includes('FORMALLY_INVALID'), 'Emits FORMALLY_INVALID diagnostic');
+
+// 7.3 NeSy Solver: inconsistent_premises (circular dependency)
+const nesyCircular = runCmd('node scripts/grill-state.mjs validate-nesy --payload "{\\"dependencies\\":[[\\"P1\\",\\"P2\\"],[\\"P2\\",\\"P1\\"]],\\"expressions\\":[]}"');
+assert(nesyCircular.code !== 0, 'NeSy circular dependency fails closed');
+assert(nesyCircular.stderr.includes('INCONSISTENT_PREMISES'), 'Emits INCONSISTENT_PREMISES diagnostic');
+
+// 7.4 NeSy Solver: malformed representation
+const nesyMalformed = runCmd('node scripts/grill-state.mjs validate-nesy --payload "not-json"');
+assert(nesyMalformed.code !== 0, 'Malformed payload fails closed');
+assert(nesyMalformed.stderr.includes('MALFORMED_REPRESENTATION'), 'Emits MALFORMED_REPRESENTATION diagnostic');
+
+// 7.5 NeSy Solver: valid passes and updates state
+const nesyValid = runCmd('node scripts/grill-state.mjs validate-nesy --payload "{\\"dependencies\\":[[\\"P2\\",\\"P1\\"]],\\"expressions\\":[{\\"left\\":\\"database_engine\\",\\"operator\\":\\"==\\",\\"right\\":\\"postgres\\"}]}" --facts "{\\"database_engine\\":\\"postgres\\"}"');
+assert(nesyValid.code === 0, 'NeSy valid expression passes');
+
+const stateAfterValid = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(stateAfterValid.validation.result === 'valid', 'Validation result recorded as valid in state');
+
+// 7.6 Procedural Advance (No Counter)
+const advanceResult = runCmd('node scripts/grill-state.mjs record-procedural-advance');
+assert(advanceResult.code === 0, 'Procedural advance succeeds when no counter on table');
+
+const stateAfterAdvance = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(stateAfterAdvance.canonical_state === 'S_A7_CONCORDANCE_SIGN_OFF', 'Advanced to S_A7_CONCORDANCE_SIGN_OFF');
+assert(stateAfterAdvance.tally.solution.agree === 1, 'Solution agree tally incremented to 1');
+assert(stateAfterAdvance.subagent_signoff === true, 'Sign-off granted on procedural advance');
 
 // Cleanup
 runCmd('node scripts/clear-ledger.mjs --no-archive');

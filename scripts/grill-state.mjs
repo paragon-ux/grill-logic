@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * grill-state.mjs: Epistemic State Engine & Fail-Closed Guard Runtime
+ * grill-state.mjs: Epistemic State Engine & Deterministic Invariant Solver
  *
  * Implements persistent state tracking (.grill-logic/state.json),
- * mathematical W/S calculations, token-locked handshakes, and
- * fail-closed diagnostic gates for Grill-Logic and Self-Grill.
+ * physical systems constraint solving, structured JSON payloads,
+ * token-locked handshakes, and fail-closed diagnostic gates.
  */
 
 import fs from 'node:fs';
@@ -84,7 +84,6 @@ export function clearState() {
   }
 }
 
-// Generate random dispatch token
 function generateToken(prefix = 'dmad_tok') {
   return `${prefix}_${randomBytes(4).toString('hex')}`;
 }
@@ -95,7 +94,194 @@ function getArgStr(args, key, fallback = '') {
   return fallback;
 }
 
+// -----------------------------------------------------------------------------
+// Zero-Dependency Neurosymbolic (NeSy) Solver
+// AST Operator Mapping, DAG Cycle Detection, and Environment Invariants
+// -----------------------------------------------------------------------------
+export const OPERATORS = {
+  '==': (a, b) => a === b,
+  '!=': (a, b) => a !== b,
+  '>':  (a, b) => a > b,
+  '<':  (a, b) => a < b,
+  '>=': (a, b) => a >= b,
+  '<=': (a, b) => a <= b,
+  'in': (a, b) => Array.isArray(b) ? b.includes(a) : (typeof b === 'string' ? b.includes(a) : false),
+  'not_in': (a, b) => Array.isArray(b) ? !b.includes(a) : (typeof b === 'string' ? !b.includes(a) : true),
+  'implies': (a, b) => (!a || Boolean(b))
+};
+
+export function hasCircularPremises(edges) {
+  if (!Array.isArray(edges)) return false;
+  const adj = new Map();
+  const visited = new Map(); // 0 = unvisited, 1 = visiting, 2 = visited
+
+  for (const [u, v] of edges) {
+    if (!adj.has(u)) adj.set(u, []);
+    adj.get(u).push(v);
+  }
+
+  function dfs(node) {
+    visited.set(node, 1);
+    for (const neighbor of adj.get(node) || []) {
+      if (visited.get(neighbor) === 1) return true; // Cycle detected
+      if (!visited.has(neighbor) && dfs(neighbor)) return true;
+    }
+    visited.set(node, 2);
+    return false;
+  }
+
+  for (const node of adj.keys()) {
+    if (!visited.has(node) && dfs(node)) return true;
+  }
+  return false;
+}
+
+export function evaluateNeSyState(rawJsonString, environmentFacts = {}) {
+  let payload;
+
+  // Outcome 1: malformed
+  try {
+    payload = typeof rawJsonString === 'string' ? JSON.parse(rawJsonString) : rawJsonString;
+    if (!payload || !Array.isArray(payload.expressions) || !Array.isArray(payload.dependencies)) {
+      return { 
+        outcome: 'malformed', 
+        diagnostic: 'Missing expressions array or dependency topology graph in payload.' 
+      };
+    }
+  } catch (err) {
+    return { 
+      outcome: 'malformed', 
+      diagnostic: `JSON parsing syntax failed: ${err.message}` 
+    };
+  }
+
+  // Outcome 2: inconsistent_premises
+  if (hasCircularPremises(payload.dependencies)) {
+    return { 
+      outcome: 'inconsistent_premises', 
+      diagnostic: 'Circular dependency detected within the premise topology graph.' 
+    };
+  }
+
+  // Evaluate structural expressions sequentially
+  for (const expr of payload.expressions) {
+    const { left, operator, right } = expr;
+
+    // Outcome 3: unsupported_expression
+    if (!OPERATORS.hasOwnProperty(operator)) {
+      return { 
+        outcome: 'unsupported_expression', 
+        diagnostic: `Operator '${operator}' is unregistered in the dispatch ledger.` 
+      };
+    }
+
+    // Outcome 4: undecidable
+    if (!(left in environmentFacts)) {
+      return { 
+        outcome: 'undecidable', 
+        diagnostic: `Variable '${left}' references unbounded runtime context missing from ground facts.` 
+      };
+    }
+
+    // Execute logical evaluation
+    const opFunction = OPERATORS[operator];
+    const runtimeValue = environmentFacts[left];
+    const resolution = opFunction(runtimeValue, right);
+
+    // Outcome 5: formally_invalid (Auto-Refutation rule triggered)
+    if (resolution === false) {
+      return { 
+        outcome: 'formally_invalid', 
+        diagnostic: `Symbolic invariant evaluation strictly failed: [Factual state ${left} (${runtimeValue}) ${operator} Bound Constraint (${right})] evaluated to False.` 
+      };
+    }
+  }
+
+  // Outcome 6: valid
+  return { 
+    outcome: 'valid', 
+    diagnostic: 'All topological dependencies verified and rule constraints successfully satisfied.' 
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Deterministic Invariant Solver: Physical systems laws & active ledger rules
+// -----------------------------------------------------------------------------
+export function solveConstraints(inputText, ledgerPath = LEDGER_FILE) {
+  const violations = [];
+  const text = inputText.toLowerCase();
+
+  // 1. Active Negative Constraint Rules in LOGICAL_LEDGER.md (Highest Precedence)
+  if (fs.existsSync(ledgerPath)) {
+    const content = fs.readFileSync(ledgerPath, 'utf8');
+    const lines = content.split('\n');
+    for (const line of lines) {
+      if (line.includes('|') && line.includes('REJECTED')) {
+        const parts = line.split('|').map(p => p.trim());
+        if (parts.length >= 6) {
+          const argId = parts[1].replace(/[*_]/g, '');
+          const ruleCell = parts[6];
+          const match = ruleCell.toLowerCase().match(/do not (?:infer|use|replace|deploy|build|implement|create|adopt|introduce) ([^.]+?)(?: because|\.|$)/i);
+          if (match) {
+            const blockedConcept = match[1].trim();
+            const keywords = blockedConcept.split(/\s+/).filter(w => w.length > 3);
+            const hits = keywords.filter(kw => text.includes(kw));
+            if (hits.length >= 2 || (keywords.length === 1 && hits.length === 1)) {
+              violations.push({
+                rule_id: argId,
+                boundary: `Active Contrastive Rule [${argId}]`,
+                reason: ruleCell
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Built-in Physical Systems Invariants
+  // Invariant 1: SQLite WAL over network storage (NFS/SMB) with concurrent writers
+  if ((text.includes('sqlite') || text.includes('sqlite3')) && 
+      (text.includes('nfs') || text.includes('network file') || text.includes('smb') || text.includes('cifs')) &&
+      (text.includes('concurrent') || text.includes('multi') || text.includes('cluster') || text.includes('workers') || text.includes('containers'))) {
+    violations.push({
+      rule_id: 'SYS-INV-01',
+      boundary: 'POSIX fcntl byte-range locking over network storage',
+      reason: 'SQLite WAL mode and multi-process write locks fail over NFS; network jitter silently leaks or corrupts database headers.'
+    });
+  }
+
+  // Invariant 2: Linux io_uring on Windows NT kernel
+  if ((text.includes('io_uring') || text.includes('iouring')) &&
+      (text.includes('windows') || text.includes('win32') || text.includes('ntfs'))) {
+    violations.push({
+      rule_id: 'SYS-INV-02',
+      boundary: 'OS Kernel Interface Compatibility',
+      reason: 'io_uring is a Linux-specific kernel interface. Windows NT uses I/O Completion Ports (IOCP) for asynchronous I/O.'
+    });
+  }
+
+  // Invariant 3: Mobile distributed two-way catalog sync
+  if ((text.includes('offline-first') || text.includes('offline')) &&
+      (text.includes('react native') || text.includes('mobile') || text.includes('ios') || text.includes('android')) &&
+      (text.includes('mirror') || text.includes('sync engine') || text.includes('two-way reconciliation')) &&
+      (text.includes('120,000') || text.includes('catalog') || text.includes('all items'))) {
+    violations.push({
+      rule_id: 'SYS-INV-03',
+      boundary: 'Mobile Storage & Consistency Boundary',
+      reason: 'Mirroring large volatile catalogs (100k+ items) to mobile clients causes payload bloat (100MB+) and high checkout failure. Requires client draft persistence with idempotent retry queues.'
+    });
+  }
+
+  return {
+    satisfied: violations.length === 0,
+    violations
+  };
+}
+
+// -----------------------------------------------------------------------------
 // CLI Commands
+// -----------------------------------------------------------------------------
 export function cmdInit(args) {
   const machine = getArgStr(args, 'machine').toUpperCase();
   const input = getArgStr(args, 'input');
@@ -125,7 +311,7 @@ export function cmdInit(args) {
   const dispatchToken = isAutonomous ? generateToken('dmad_tok') : null;
 
   const state = {
-    version: '2.0.0',
+    version: '2.2.0',
     active_machine: isAutonomous ? 'AUTONOMOUS_DMAD' : 'HUMAN_HITL',
     current_state: isAutonomous ? 'AWAITING_SUBAGENT_DISPATCH' : 'IDENTIFY_BRANCHES',
     input_text: input,
@@ -142,20 +328,13 @@ export function cmdInit(args) {
         new_propositions_count: 0,
         reassertions_count: 0,
         consecutive_stagnant_turns: 0,
-        reassertion_ratio: 0.0,
         diagnostic_required: false
-      },
-      s_llm: {
-        risk_level: 'UNASSESSED',
-        sycophancy_score: null,
-        confirmation_bias_score: null,
-        fixed_mental_set: null,
-        subagent_signoff: false,
-        suggested_skepticism: null
       }
     },
     probes_executed: [],
-    verdict: null,
+    premise_status: null,
+    inference_status: null,
+    conclusion_status: null,
     contrastive_rule: null
   };
 
@@ -214,11 +393,28 @@ export function cmdRecordSubagentAudit(args) {
     process.exit(1);
   }
 
-  const riskLevel = getArgStr(args, 'risk', 'MODERATE').toUpperCase();
-  const verdict = getArgStr(args, 'verdict', 'REJECTED').toUpperCase();
-  const rule = getArgStr(args, 'rule');
-  const probeTool = getArgStr(args, 'probe-tool');
-  const probeFinding = getArgStr(args, 'probe-finding');
+  // Parse structured payload directly (no manual flag parsing)
+  let payload = {};
+  if (args.payload) {
+    try {
+      payload = JSON.parse(args.payload);
+    } catch (err) {
+      emitDiagnostic({
+        code: 'INVALID_PAYLOAD_JSON',
+        reason: `Could not parse --payload JSON: ${err.message}`,
+        remediation: 'Provide valid structured JSON: `{"premise_status":"...","conclusion_status":"...","probe":{"tool":"...","finding":"..."}}`.'
+      });
+      process.exit(1);
+    }
+  }
+
+  const premiseStatus = (payload.premise_status || getArgStr(args, 'premise-status')).toUpperCase();
+  const inferenceStatus = (payload.inference_status || getArgStr(args, 'inference-status')).toUpperCase();
+  const conclusionStatus = (payload.conclusion_status || getArgStr(args, 'conclusion-status')).toUpperCase();
+  const rule = payload.rule || getArgStr(args, 'rule');
+
+  const probeTool = payload.probe?.tool || getArgStr(args, 'probe-tool');
+  const probeFinding = payload.probe?.finding || getArgStr(args, 'probe-finding');
 
   // Enforce tool probe invariant: subagent must record a real tool execution
   if (!probeTool || !probeFinding) {
@@ -228,16 +424,89 @@ export function cmdRecordSubagentAudit(args) {
       state: state.current_state,
       targetW: state.epistemic_context.target_w,
       challengerW: state.epistemic_context.challenger_w,
-      risk: riskLevel,
       reason: 'Subagent audit submitted without an empirical tool probe. Simulated text monologues are forbidden.',
-      remediation: 'Execute a real tool probe (grep_search, view_file, run_command) and provide `--probe-tool` and `--probe-finding`.'
+      remediation: 'Execute a real tool probe (grep_search, view_file, run_command) and provide probe tool and finding in payload.'
     });
     process.exit(1);
   }
 
+  // ---------------------------------------------------------------------------
+  // Structural Round Protocol Invariants
+  // ---------------------------------------------------------------------------
+  if (state.current_state === 'AWAITING_LLM_RESPONSE') {
+    emitDiagnostic({
+      code: 'ROUND_PROTOCOL_VIOLATION',
+      machine: state.active_machine,
+      state: state.current_state,
+      reason: 'Subagent cannot record an audit while awaiting target LLM response in Round 2.',
+      remediation: 'Target LLM must first respond via `record-llm-response`.'
+    });
+    process.exit(1);
+  }
+
+  if (state.current_state === 'AWAITING_SUBAGENT_DISPATCH') {
+    // Round 1 (Initial Challenge / Refutation):
+    // SUPPORTED is strictly prohibited in Round 1 before challenge confrontation and dialectic synthesis.
+    if (conclusionStatus === 'SUPPORTED') {
+      emitDiagnostic({
+        code: 'ROUND_PROTOCOL_VIOLATION',
+        machine: state.active_machine,
+        state: state.current_state,
+        reason: 'Subagent cannot declare conclusion SUPPORTED in Round 1 before challenge confrontation and dialectic synthesis.',
+        remediation: 'In Round 1, challenger must issue challenge via `conclusion_status: "CHALLENGED"` or fatal refutation via `"REJECTED"`.'
+      });
+      process.exit(1);
+    }
+
+    if (conclusionStatus === 'CHALLENGED') {
+      state.current_state = 'AWAITING_LLM_RESPONSE';
+      state.conclusion_status = 'CHALLENGED';
+      state.premise_status = premiseStatus || 'UNTESTED';
+      state.inference_status = inferenceStatus || 'INVALID_LEAP';
+      state.contrastive_rule = rule;
+    } else if (conclusionStatus === 'REJECTED') {
+      state.current_state = 'SUBAGENT_AUDIT_LOGGED';
+      state.conclusion_status = 'REJECTED';
+      state.premise_status = premiseStatus || 'FALSIFIED';
+      state.inference_status = inferenceStatus || 'INVALID_LEAP';
+      state.contrastive_rule = rule;
+      state.subagent_signoff = false;
+    } else {
+      emitDiagnostic({
+        code: 'INVALID_STATUS',
+        reason: `In Round 1, conclusion_status must be 'CHALLENGED' or 'REJECTED'. Received: '${conclusionStatus}'`,
+        remediation: 'Specify `conclusion_status: "CHALLENGED"` (to prompt counter-hypothesis) or `"REJECTED"`.'
+      });
+      process.exit(1);
+    }
+  } else if (state.current_state === 'AWAITING_SUBAGENT_EVAL') {
+    // Round 2 (Evaluation of Proposer's Synthesized C'):
+    if (conclusionStatus === 'SUPPORTED') {
+      state.current_state = 'SUBAGENT_SIGNED_OFF';
+      state.conclusion_status = 'SUPPORTED';
+      state.premise_status = premiseStatus || 'CONFIRMED';
+      state.inference_status = inferenceStatus || 'VALID';
+      state.contrastive_rule = rule;
+      state.subagent_signoff = true; // Auto-signoff on verified synthesis
+    } else if (conclusionStatus === 'REJECTED') {
+      state.current_state = 'SUBAGENT_AUDIT_LOGGED';
+      state.conclusion_status = 'REJECTED';
+      state.premise_status = premiseStatus || 'FALSIFIED';
+      state.inference_status = inferenceStatus || 'INVALID_LEAP';
+      state.contrastive_rule = rule;
+      state.subagent_signoff = false;
+    } else {
+      emitDiagnostic({
+        code: 'INVALID_STATUS',
+        reason: `In Round 2, conclusion_status must be 'SUPPORTED' or 'REJECTED'. Received: '${conclusionStatus}'`,
+        remediation: 'Specify `conclusion_status: "SUPPORTED"` (if C\' resolves probe findings) or `"REJECTED"`.'
+      });
+      process.exit(1);
+    }
+  }
+
   state.subagent_called = true;
   state.updated_at = new Date().toISOString();
-
   state.probes_executed.push({
     round: state.probes_executed.length + 1,
     tool: probeTool,
@@ -245,78 +514,11 @@ export function cmdRecordSubagentAudit(args) {
     timestamp: new Date().toISOString()
   });
 
-  if (verdict === 'CHALLENGE_ISSUED') {
-    // Round 1 Challenge: S_LLM cannot be scored yet because LLM has not responded to the challenge!
-    state.current_state = 'AWAITING_LLM_RESPONSE';
-    state.verdict = 'CHALLENGE_ISSUED';
-    state.contrastive_rule = rule;
-    state.epistemic_context.s_llm.risk_level = riskLevel;
-    state.epistemic_context.s_llm.suggested_skepticism = rule;
-    saveState(state);
-
-    console.log(`[GRILL-STATE] Subagent challenge recorded successfully.`);
-    console.log(`[GRILL-STATE] State: AWAITING_LLM_RESPONSE (S_LLM unassessed until target responds)`);
-    console.log(`[GRILL-STATE] Empirical Probe: [${probeTool}] ${probeFinding}`);
-    return;
-  }
-
-  // Final / Evaluated Audit: Score S_LLM deterministically based on target LLM reaction to challenge
-  let sycoScore;
-  if (args['unearned-concessions'] !== undefined || args['total-concessions'] !== undefined) {
-    const unearned = parseInt(args['unearned-concessions'] || '0', 10);
-    const totalConcessions = parseInt(args['total-concessions'] || '0', 10);
-    sycoScore = totalConcessions > 0 ? parseFloat((unearned / totalConcessions).toFixed(2)) : 0.0;
-  } else {
-    sycoScore = parseFloat(args.syco || '0.0');
-  }
-
-  let confScore;
-  if (args['unexamined-counter-evidence'] !== undefined || args['total-counter-evidence'] !== undefined) {
-    const unexamined = parseInt(args['unexamined-counter-evidence'] || '0', 10);
-    const totalCounter = parseInt(args['total-counter-evidence'] || '1', 10);
-    confScore = totalCounter > 0 ? parseFloat((unexamined / totalCounter).toFixed(2)) : 0.0;
-  } else {
-    confScore = parseFloat(args.conf || '0.0');
-  }
-
-  let fixedSet;
-  if (args['hypothesis-shifted'] !== undefined) {
-    fixedSet = String(args['hypothesis-shifted']).toLowerCase() === 'false';
-  } else if (args['fixed-set'] !== undefined) {
-    fixedSet = String(args['fixed-set']).toLowerCase() === 'true';
-  } else {
-    fixedSet = false;
-  }
-
-  // Deterministic Epistemic Risk Level
-  let computedRisk = riskLevel;
-  if (args.risk === undefined) {
-    if (fixedSet || confScore > 0.5 || sycoScore > 0.5) {
-      computedRisk = 'HIGH';
-    } else if (confScore > 0.0 || sycoScore > 0.0) {
-      computedRisk = 'MODERATE';
-    } else {
-      computedRisk = 'LOW';
-    }
-  }
-
-  state.current_state = 'SUBAGENT_AUDIT_LOGGED';
-  state.epistemic_context.s_llm = {
-    risk_level: computedRisk,
-    sycophancy_score: sycoScore,
-    confirmation_bias_score: confScore,
-    fixed_mental_set: fixedSet,
-    subagent_signoff: verdict === 'SUPPORTED',
-    suggested_skepticism: rule
-  };
-  state.verdict = verdict;
-  state.contrastive_rule = rule;
-
   saveState(state);
 
   console.log(`[GRILL-STATE] Subagent audit recorded successfully.`);
-  console.log(`[GRILL-STATE] Verdict: ${verdict} | Risk Level: ${computedRisk} | Tool: ${probeTool}`);
-  console.log(`[GRILL-STATE] Deterministic S_LLM: Sycophancy=${sycoScore} | ConfBias=${confScore} | FixedSet=${fixedSet}`);
+  console.log(`[GRILL-STATE] State: ${state.current_state} | Conclusion: ${state.conclusion_status} | Premise: ${state.premise_status} | Inference: ${state.inference_status}`);
+  console.log(`[GRILL-STATE] Empirical Probe: [${probeTool}] ${probeFinding}`);
 }
 
 export function cmdRecordLlmResponse(args) {
@@ -358,19 +560,33 @@ export function cmdRecordLlmResponse(args) {
       machine: state.active_machine,
       state: state.current_state,
       reason: `Cannot record LLM response when current state is '${state.current_state}'. Expected: 'AWAITING_LLM_RESPONSE'.`,
-      remediation: 'Subagent must issue a challenge via `--verdict CHALLENGE_ISSUED` before target LLM records response.'
+      remediation: 'Subagent must issue a challenge before target LLM records response.'
     });
     process.exit(1);
   }
 
-  const type = getArgStr(args, 'type').toLowerCase();
-  const response = getArgStr(args, 'response');
+  let payload = {};
+  if (args.payload) {
+    try {
+      payload = JSON.parse(args.payload);
+    } catch (err) {
+      emitDiagnostic({
+        code: 'INVALID_PAYLOAD_JSON',
+        reason: `Could not parse --payload JSON: ${err.message}`,
+        remediation: 'Provide valid JSON: `{"type":"counter|concede","response":"..."}`.'
+      });
+      process.exit(1);
+    }
+  }
+
+  const type = (payload.type || getArgStr(args, 'type')).toLowerCase();
+  const response = payload.response || getArgStr(args, 'response');
 
   if (type !== 'counter' && type !== 'concede') {
     emitDiagnostic({
       code: 'INVALID_RESPONSE_TYPE',
       reason: `LLM response type must be 'counter' or 'concede'. Received: '${type}'`,
-      remediation: 'Specify `--type counter` (with refined proposal) or `--type concede`.'
+      remediation: 'Specify `type: "counter"` (with synthesized C\') or `type: "concede"`.'
     });
     process.exit(1);
   }
@@ -379,14 +595,15 @@ export function cmdRecordLlmResponse(args) {
     emitDiagnostic({
       code: 'EMPTY_RESPONSE_PAYLOAD',
       reason: 'LLM response text cannot be empty.',
-      remediation: 'Provide `--response "<explanation or refined proposal>"`.'
+      remediation: 'Provide `response: "<explanation or synthesized C\'>"`.'
     });
     process.exit(1);
   }
 
   if (type === 'concede') {
     state.current_state = 'LLM_CONCEDED';
-    state.verdict = 'REJECTED';
+    state.conclusion_status = 'REJECTED';
+    state.premise_status = 'FALSIFIED';
   } else {
     state.current_state = 'AWAITING_SUBAGENT_EVAL';
   }
@@ -401,38 +618,6 @@ export function cmdRecordLlmResponse(args) {
 
   saveState(state);
   console.log(`[GRILL-STATE] Recorded LLM response (${type.toUpperCase()}). Next state: ${state.current_state}`);
-}
-
-export function cmdSignoffSubagent(args) {
-  const state = loadState();
-  if (!state) {
-    emitDiagnostic({
-      code: 'NO_ACTIVE_SESSION',
-      reason: 'Attempted subagent signoff without active session.',
-      remediation: 'Initialize session first.'
-    });
-    process.exit(1);
-  }
-
-  const token = getArgStr(args, 'token');
-  if (token !== state.dispatch_token) {
-    emitDiagnostic({
-      code: 'DISPATCH_TOKEN_MISMATCH',
-      machine: state.active_machine,
-      state: state.current_state,
-      reason: `Signoff token mismatch: '${token}'.`,
-      remediation: 'Provide matching dispatch token.'
-    });
-    process.exit(1);
-  }
-
-  state.subagent_signoff = true;
-  state.epistemic_context.s_llm.subagent_signoff = true;
-  state.current_state = 'SUBAGENT_SIGNED_OFF';
-  state.updated_at = new Date().toISOString();
-
-  saveState(state);
-  console.log('[GRILL-STATE] Subagent signoff recorded. Proposal unblocked for ledger commitment.');
 }
 
 export function cmdRecordUserTurn(args) {
@@ -470,11 +655,6 @@ export function cmdRecordUserTurn(args) {
     sHuman.consecutive_stagnant_turns += 1;
   }
 
-  // Calculate Reassertion Ratio
-  sHuman.reassertion_ratio = parseFloat(
-    (sHuman.reassertions_count / (sHuman.new_propositions_count + 1)).toFixed(2)
-  );
-
   // Stagnation threshold: 3 consecutive turns without new propositions
   if (sHuman.consecutive_stagnant_turns >= 3) {
     sHuman.diagnostic_required = true;
@@ -487,18 +667,17 @@ export function cmdRecordUserTurn(args) {
       state: state.current_state,
       targetW: state.epistemic_context.target_w,
       challengerW: state.epistemic_context.challenger_w,
-      sHuman: `R_reassert=${sHuman.reassertion_ratio}, stagnant_turns=${sHuman.consecutive_stagnant_turns}`,
       reason: `Human user has held their position for ${sHuman.consecutive_stagnant_turns} consecutive rounds without introducing new empirical constraints or evidence.`,
-      remediation: 'Model MUST emit the diagnostic query: "You have maintained this position across 3 rounds without introducing new constraints. Do you accept this operational trade-off or address counter-evidence [X]?" Run `record-diagnostic-ack` once user responds.'
+      remediation: 'Model MUST emit diagnostic query. Run `record-diagnostic-ack` once user responds.'
     });
-    process.exit(1); // Fail-closed: halts execution until diagnostic query is acknowledged
+    process.exit(1);
   }
 
   state.current_state = 'USER_TURN_RECORDED';
   state.updated_at = new Date().toISOString();
   saveState(state);
 
-  console.log(`[GRILL-STATE] Recorded user turn #${state.turn_count}. (New prop: ${hasNewProp}, Stagnant count: ${sHuman.consecutive_stagnant_turns}, R_reassert: ${sHuman.reassertion_ratio})`);
+  console.log(`[GRILL-STATE] Recorded user turn #${state.turn_count}. (New prop: ${hasNewProp}, Stagnant count: ${sHuman.consecutive_stagnant_turns})`);
 }
 
 export function cmdRecordDiagnosticAck() {
@@ -514,8 +693,237 @@ export function cmdRecordDiagnosticAck() {
   console.log('[GRILL-STATE] Human stagnation diagnostic acknowledged. Progression unblocked per W_human sovereignty.');
 }
 
+export function cmdAddLogic(args) {
+  const prompt = getArgStr(args, 'prompt') || getArgStr(args, 'input');
+  const premisesStr = getArgStr(args, 'premises');
+  const conclusion = getArgStr(args, 'conclusion');
+
+  if (!prompt || prompt.length < 5) {
+    emitDiagnostic({
+      code: 'INPUT_GATE_HALT',
+      reason: 'add-logic requires a non-empty `--prompt "<text>"` (>= 5 chars).',
+      remediation: 'Provide the architectural prompt to formulate. Example: `node scripts/grill-state.mjs add-logic --prompt "Deploy redis for caching"`'
+    });
+    process.exit(1);
+  }
+
+  let premises = [];
+  if (premisesStr) {
+    try {
+      premises = JSON.parse(premisesStr);
+      if (!Array.isArray(premises)) premises = [premisesStr];
+    } catch {
+      premises = [premisesStr];
+    }
+  } else {
+    premises = [prompt];
+  }
+
+  // Deduplication check against LOGICAL_LEDGER.md
+  if (fs.existsSync(LEDGER_FILE)) {
+    const ledgerContent = fs.readFileSync(LEDGER_FILE, 'utf8');
+    const promptLower = prompt.toLowerCase();
+    const lines = ledgerContent.split('\n');
+    for (const line of lines) {
+      if (line.includes('|') && !line.includes('| :---')) {
+        const parts = line.split('|').map(p => p.trim());
+        if (parts.length >= 4) {
+          const argId = parts[1].replace(/[*_]/g, '');
+          const existingP = parts[2].toLowerCase();
+          if (existingP.includes(promptLower) || promptLower.includes(existingP.replace(/\*\*p\*:\s*/i, ''))) {
+            console.warn(`[GRILL-STATE] Warning: Possible duplicate of ${argId} already in ledger.`);
+          }
+        }
+      }
+    }
+  }
+
+  let nextIdNum = 1;
+  let ledgerContent = '';
+  if (fs.existsSync(LEDGER_FILE)) {
+    ledgerContent = fs.readFileSync(LEDGER_FILE, 'utf8');
+    const argMatches = [...ledgerContent.matchAll(/\*\*ARG-(\d+)\*\*/g)];
+    if (argMatches.length > 0) {
+      nextIdNum = Math.max(...argMatches.map(m => parseInt(m[1], 10))) + 1;
+    }
+  }
+  const argId = `ARG-${String(nextIdNum).padStart(2, '0')}`;
+
+  const cleanP = premises.map((p, idx) => typeof p === 'object' ? `**P${idx+1}**: ${p.statement || JSON.stringify(p)}` : `**P${idx+1}**: ${p}`).join('<br>');
+  const cleanC = conclusion ? `**C**: ${conclusion}` : `**C**: ${prompt}`;
+
+  const row = `| **${argId}** | ${cleanP} | ${cleanC} | **FORMULATED** | **Interpretation Gate** (Human ↔ LLM baseline confirmed) | Baseline registered. Awaiting validation & challenge. |`;
+
+  // Append row right after active decision table header if table exists
+  if (ledgerContent.includes('| :--- | :--- | :--- | :--- | :--- | :--- |')) {
+    const tableHeaderIndex = ledgerContent.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
+    const insertPos = tableHeaderIndex + '| :--- | :--- | :--- | :--- | :--- | :--- |'.length;
+    const updatedLedger = ledgerContent.slice(0, insertPos) + '\n' + row + ledgerContent.slice(insertPos);
+    fs.writeFileSync(LEDGER_FILE, updatedLedger, 'utf8');
+  }
+
+  const state = {
+    version: '2.2.0',
+    arg_id: argId,
+    active_machine: 'HUMAN_HITL',
+    canonical_state: 'S_U0B_ADD_LOGIC',
+    current_state: 'S_U0B_ADD_LOGIC',
+    source_prompt: prompt,
+    premises,
+    conclusion: conclusion || prompt,
+    tally: {
+      premises: { agree: 1, disagree: 0, uncertain: 0 },
+      solution: { agree: 0, disagree: 0, uncertain: 0 }
+    },
+    validation: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    turn_count: 0
+  };
+
+  saveState(state);
+  console.log(`[GRILL-STATE] Baseline logic formulated: ${argId} committed as FORMULATED.`);
+  console.log(`[GRILL-STATE] Canonical State: S_U0B_ADD_LOGIC. Tally initialized. Ready for validation.`);
+}
+
+export function cmdValidateNeSy(args) {
+  let payloadStr = args.payload;
+  if (!payloadStr) {
+    emitDiagnostic({
+      code: 'MALFORMED_VALIDATION_INPUT',
+      reason: 'validate-nesy requires `--payload \'<JSON>\'`.',
+      remediation: 'Provide JSON payload containing expressions and dependencies.'
+    });
+    process.exit(1);
+  }
+
+  let facts = {};
+  if (args.facts) {
+    try {
+      facts = JSON.parse(args.facts);
+    } catch {
+      facts = {};
+    }
+  } else {
+    // Default baseline facts from active ledger or environment
+    facts = {
+      os_platform: process.platform,
+      arch: process.arch
+    };
+  }
+
+  const result = evaluateNeSyState(payloadStr, facts);
+
+  const state = loadState();
+  if (state) {
+    state.validation = {
+      result: result.outcome,
+      notes: result.diagnostic,
+      timestamp: new Date().toISOString()
+    };
+    if (result.outcome === 'valid') {
+      state.canonical_state = state.active_machine === 'AUTONOMOUS_DMAD' ? 'S_A1_TOKEN_ISSUE' : 'S_U2_CHALLENGE';
+    }
+    saveState(state);
+  }
+
+  if (result.outcome === 'formally_invalid') {
+    emitDiagnostic({
+      code: 'FORMALLY_INVALID',
+      reason: result.diagnostic,
+      remediation: 'Argument is formally invalid. Triggering immediate auto-refutation.'
+    });
+    process.exit(1);
+  }
+
+  if (result.outcome === 'inconsistent_premises') {
+    emitDiagnostic({
+      code: 'INCONSISTENT_PREMISES',
+      reason: result.diagnostic,
+      remediation: 'Circular premise dependency detected. Return to /add-logic to repair.'
+    });
+    process.exit(1);
+  }
+
+  if (result.outcome === 'malformed') {
+    emitDiagnostic({
+      code: 'MALFORMED_REPRESENTATION',
+      reason: result.diagnostic,
+      remediation: 'JSON / expression syntax is malformed. Reformulate and re-run.'
+    });
+    process.exit(1);
+  }
+
+  if (result.outcome === 'unsupported_expression') {
+    console.warn(`[GRILL-STATE] Validation warning (unsupported_expression): ${result.diagnostic}`);
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (result.outcome === 'undecidable') {
+    console.log(`[GRILL-STATE] Validation result: UNDECIDABLE (marked UNCERTAIN for empirical probe).`);
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`[GRILL-STATE] NeSy Validation PASS: ${result.diagnostic}`);
+  console.log(JSON.stringify(result, null, 2));
+}
+
+export function cmdRecordProceduralAdvance(args) {
+  const state = loadState();
+  if (!state) {
+    emitDiagnostic({
+      code: 'NO_ACTIVE_SESSION',
+      reason: 'Attempted procedural advance without an active session.',
+      remediation: 'Initialize session first via `grill-state init` or `add-logic`.'
+    });
+    process.exit(1);
+  }
+
+  const token = getArgStr(args, 'token');
+  if (state.dispatch_token && (!token || token !== state.dispatch_token)) {
+    emitDiagnostic({
+      code: 'DISPATCH_TOKEN_MISMATCH',
+      reason: `Mismatched dispatch token: '${token}'. Expected: '${state.dispatch_token}'.`,
+      remediation: 'Provide matching session dispatch token.'
+    });
+    process.exit(1);
+  }
+
+  // If a fatal refutation is active, cannot procedurally advance without counter-proof
+  if (state.conclusion_status === 'REJECTED' && state.premise_status === 'FALSIFIED') {
+    emitDiagnostic({
+      code: 'EMPIRICAL_COUNTER_ACTIVE',
+      reason: 'Cannot procedurally advance while an empirical refutation (REJECTED) remains active.',
+      remediation: 'Address the open empirical probe finding or concede.'
+    });
+    process.exit(1);
+  }
+
+  if (!state.tally) {
+    state.tally = {
+      premises: { agree: 1, disagree: 0, uncertain: 0 },
+      solution: { agree: 1, disagree: 0, uncertain: 0 }
+    };
+  } else {
+    state.tally.solution = state.tally.solution || { agree: 0, disagree: 0, uncertain: 0 };
+    state.tally.solution.agree += 1;
+  }
+
+  state.canonical_state = 'S_A7_CONCORDANCE_SIGN_OFF';
+  state.current_state = 'SUBAGENT_SIGNED_OFF';
+  state.conclusion_status = 'SUPPORTED';
+  state.subagent_signoff = true;
+  state.updated_at = new Date().toISOString();
+
+  saveState(state);
+  console.log('[GRILL-STATE] Procedural advance recorded: No empirical counter on table.');
+  console.log(`[GRILL-STATE] Canonical State: S_A7_CONCORDANCE_SIGN_OFF. Tally updated.`);
+}
+
 export function cmdCheckGate(args) {
-  const proposal = getArgStr(args, 'proposal').toLowerCase();
+  const proposal = getArgStr(args, 'proposal');
   if (!proposal) {
     emitDiagnostic({
       code: 'INPUT_GATE_HALT',
@@ -525,49 +933,19 @@ export function cmdCheckGate(args) {
     process.exit(1);
   }
 
-  if (!fs.existsSync(LEDGER_FILE)) {
-    console.log('[GRILL-STATE] LOGICAL_LEDGER.md not found. Gate PASS.');
-    return;
+  // Run Deterministic Invariant Solver
+  const solverResult = solveConstraints(proposal);
+  if (!solverResult.satisfied) {
+    const v = solverResult.violations[0];
+    emitDiagnostic({
+      code: v.rule_id.startsWith('SYS-') ? 'INVARIANT_SOLVER_VIOLATION' : 'EPISTEMIC_FIREWALL_VIOLATION',
+      reason: `Deterministic Invariant Solver detected violation [${v.rule_id}]: "${v.reason}". Boundary: "${v.boundary}".`,
+      remediation: `Halt execution immediately. Reject proposal or cite rule ${v.rule_id} to user and adopt supported alternative.`
+    });
+    process.exit(1);
   }
 
-  const content = fs.readFileSync(LEDGER_FILE, 'utf8');
-  const lines = content.split('\n');
-
-  // Parse table rows for REJECTED arguments and Contrastive Rules
-  const rejectedRules = [];
-  for (const line of lines) {
-    if (line.includes('|') && line.includes('REJECTED')) {
-      const parts = line.split('|').map(p => p.trim());
-      if (parts.length >= 6) {
-        const argId = parts[1].replace(/[*_]/g, '');
-        const ruleCell = parts[6];
-        rejectedRules.push({ id: argId, raw: ruleCell });
-      }
-    }
-  }
-
-  // Check keyword collisions against contrastive refutations
-  for (const r of rejectedRules) {
-    const rawLower = r.raw.toLowerCase();
-    // Extract negative constraints ("do not infer...", "do not use...", "do not build...")
-    const match = rawLower.match(/do not (?:infer|use|replace|deploy|build|implement|create|adopt|introduce) ([^.]+?)(?: because|\.|$)/i);
-    if (match) {
-      const blockedConcept = match[1].trim();
-      const keywords = blockedConcept.split(/\s+/).filter(w => w.length > 3);
-      const hit = keywords.filter(kw => proposal.includes(kw));
-
-      if (hit.length >= 2 || (keywords.length === 1 && hit.length === 1)) {
-        emitDiagnostic({
-          code: 'EPISTEMIC_FIREWALL_VIOLATION',
-          reason: `Proposal collides with active REJECTED rule [${r.id}]: "${r.raw}". Blocked concept: "${blockedConcept}".`,
-          remediation: `Halt execution immediately. Cite rule ${r.id} to user and adopt the supported alternative recorded in LOGICAL_LEDGER.md.`
-        });
-        process.exit(1);
-      }
-    }
-  }
-
-  console.log('[GRILL-STATE] Pre-flight firewall check PASS. No active REJECTED rule violations found.');
+  console.log('[GRILL-STATE] Pre-flight firewall & invariant check PASS. No violations found.');
 }
 
 export function cmdCommit(args) {
@@ -595,16 +973,13 @@ export function cmdCommit(args) {
 
   // Fail-Closed Epistemic Guards:
   if (state.active_machine === 'AUTONOMOUS_DMAD') {
-    // 0. Multi-Round State Transition Guards
     if (state.current_state === 'AWAITING_LLM_RESPONSE') {
       emitDiagnostic({
         code: 'CHALLENGE_UNADDRESSED',
         machine: state.active_machine,
         state: state.current_state,
-        targetW: state.epistemic_context.target_w,
-        challengerW: state.epistemic_context.challenger_w,
         reason: 'Cannot commit ledger while a subagent challenge is awaiting target LLM response.',
-        remediation: 'Target LLM must respond via `record-llm-response --type counter|concede`.'
+        remediation: 'Target LLM must respond via `record-llm-response`.'
       });
       process.exit(1);
     }
@@ -613,55 +988,49 @@ export function cmdCommit(args) {
         code: 'EVALUATION_PENDING',
         machine: state.active_machine,
         state: state.current_state,
-        targetW: state.epistemic_context.target_w,
-        challengerW: state.epistemic_context.challenger_w,
         reason: 'Cannot commit ledger while subagent evaluation of LLM response is pending.',
         remediation: 'Subagent must evaluate LLM response via `record-subagent-audit`.'
       });
       process.exit(1);
     }
 
-    // 1. Must have executed an actual probe
     if (!state.probes_executed || state.probes_executed.length === 0) {
       emitDiagnostic({
         code: 'EMPIRICAL_PROBE_MISSING',
         machine: state.active_machine,
         state: state.current_state,
-        targetW: state.epistemic_context.target_w,
-        challengerW: state.epistemic_context.challenger_w,
         reason: 'Cannot commit autonomous audit without at least one empirical tool probe execution.',
         remediation: 'Run a real tool probe (grep_search, run_command, view_file) and record it before committing.'
       });
       process.exit(1);
     }
 
-    // 2. Asymmetric Override Guard: LLM (W=0.2) cannot commit SUPPORTED if subagent (W=0.8) rejected
-    if (status === 'SUPPORTED' && state.verdict === 'REJECTED') {
+    // Asymmetric Override Guard: LLM (W=0.2) cannot commit SUPPORTED if subagent rejected
+    if (status === 'SUPPORTED' && state.conclusion_status === 'REJECTED') {
       emitDiagnostic({
         code: 'ASYMMETRIC_OVERRIDE_FORBIDDEN',
         machine: state.active_machine,
         state: state.current_state,
         targetW: state.epistemic_context.target_w,
         challengerW: state.epistemic_context.challenger_w,
-        reason: 'Target W_LLM (0.2) attempted to mark proposal SUPPORTED over Challenger W_subagent (0.8) rejection without empirical counter-proof.',
-        remediation: 'Either accept the subagent REJECTED verdict or provide a falsification counter-probe disproving the subagent findings.'
+        reason: 'Target W_LLM (0.2) attempted to mark proposal SUPPORTED over Challenger rejection without empirical counter-proof.',
+        remediation: 'Either accept the subagent REJECTED verdict or provide a falsification counter-probe.'
       });
       process.exit(1);
     }
 
-    // 3. Subagent Signoff Guard: Cannot commit SUPPORTED without subagent signoff
+    // Subagent Signoff Guard: Cannot commit SUPPORTED without subagent signoff
     if (status === 'SUPPORTED' && !state.subagent_signoff) {
       emitDiagnostic({
         code: 'SIGNOFF_TOKEN_MISSING',
         machine: state.active_machine,
         state: state.current_state,
         reason: 'Cannot commit SUPPORTED status without explicit subagent sign-off in state.',
-        remediation: 'Obtain subagent sign-off via `signoff-subagent`.'
+        remediation: 'Subagent must submit conclusion_status: "SUPPORTED" in Round 2.'
       });
       process.exit(1);
     }
   } else if (state.active_machine === 'HUMAN_HITL') {
-    // Stagnation lock: cannot commit if diagnostic is pending
     if (state.epistemic_context.s_human.diagnostic_required) {
       emitDiagnostic({
         code: 'HUMAN_STAGNATION_ALERT',
@@ -696,10 +1065,19 @@ export function cmdCommit(args) {
   const isAuto = state.active_machine === 'AUTONOMOUS_DMAD';
   const conclusion = isAuto ? 'Implement proposal' : 'Aligned architecture';
   const auditEvidence = isAuto
-    ? `**Subagent Challenger (W_subagent=0.8, S_LLM=${state.epistemic_context.s_llm.risk_level})**: ${probeSummary}`
-    : `**Human HITL (W_human=1.0, R_reassert=${state.epistemic_context.s_human.reassertion_ratio})**: Decision tree aligned`;
+    ? `**Subagent Challenger (W_subagent=0.8)**: ${probeSummary}`
+    : `**Human HITL (W_human=1.0)**: Decision tree aligned`;
 
-  const row = `| **${argId}** | **P**: ${cleanInput} | **C**: ${conclusion} | **${status}** | ${auditEvidence} | ${cleanRule || 'Verified'} |`;
+  let statusDisplay = `**${status}**`;
+  if (status === 'REJECTED') {
+    if (state.premise_status === 'FALSIFIED') {
+      statusDisplay = `**REJECTED**<br>*(False Axiom)*`;
+    } else if (state.inference_status === 'INVALID_LEAP') {
+      statusDisplay = `**REJECTED**<br>*(Invalid Leap)*`;
+    }
+  }
+
+  const row = `| **${argId}** | **P**: ${cleanInput} | **C**: ${conclusion} | ${statusDisplay} | ${auditEvidence} | ${cleanRule || 'Verified'} |`;
 
   // Append row right after active decision table header
   const tableHeaderIndex = ledgerContent.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
@@ -734,24 +1112,36 @@ function parseArgs(args) {
   return parsed;
 }
 
-const action = process.argv[2];
-const parsedArgs = parseArgs(process.argv.slice(3));
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith('grill-state.mjs') || 
+  process.argv[1].endsWith('grill-state')
+);
 
-switch (action) {
+if (isMain) {
+  const action = process.argv[2];
+  const parsedArgs = parseArgs(process.argv.slice(3));
+
+  switch (action) {
   case 'init':
     cmdInit(parsedArgs);
     break;
   case 'status':
     cmdStatus();
     break;
+  case 'add-logic':
+    cmdAddLogic(parsedArgs);
+    break;
+  case 'validate-nesy':
+    cmdValidateNeSy(parsedArgs);
+    break;
+  case 'record-procedural-advance':
+    cmdRecordProceduralAdvance(parsedArgs);
+    break;
   case 'record-subagent-audit':
     cmdRecordSubagentAudit(parsedArgs);
     break;
   case 'record-llm-response':
     cmdRecordLlmResponse(parsedArgs);
-    break;
-  case 'signoff-subagent':
-    cmdSignoffSubagent(parsedArgs);
     break;
   case 'record-user-turn':
     cmdRecordUserTurn(parsedArgs);
@@ -760,6 +1150,7 @@ switch (action) {
     cmdRecordDiagnosticAck();
     break;
   case 'check-gate':
+  case 'solve-bounds':
     cmdCheckGate(parsedArgs);
     break;
   case 'commit':
@@ -767,15 +1158,19 @@ switch (action) {
     break;
   default:
     console.log(`Grill-State CLI:
-  init                     --machine <autonomous|human> --input "<text>"
+  init                       --machine <autonomous|human> --input "<text>"
   status
-  record-subagent-audit    --token <tok> [--unearned-concessions <N> --total-concessions <N>] [--unexamined-counter-evidence <N> --total-counter-evidence <N>] [--hypothesis-shifted <bool>] [--risk <LOW|MOD|HIGH>] --probe-tool <tool> --probe-finding "<text>" --verdict <CHALLENGE_ISSUED|SUPPORTED|REJECTED> [--rule "<rule>"]
-  record-llm-response      --token <tok> --type <counter|concede> --response "<text>"
-  signoff-subagent         --token <tok>
-  record-user-turn         --new-prop <true|false> [--choice "<text>"]
+  add-logic                  --prompt "<text>" [--premises '<JSON>'] [--conclusion "<text>"]
+  validate-nesy              --payload '<JSON>' [--facts '<JSON>']
+  record-procedural-advance  --token <tok>
+  record-subagent-audit      --token <tok> --payload '<JSON>'
+  record-llm-response        --token <tok> --payload '<JSON>'
+  record-user-turn           --new-prop <true|false> [--choice "<text>"]
   record-diagnostic-ack
-  check-gate               --proposal "<text>"
-  commit                   --status <SUPPORTED|REJECTED> [--rule "<rule>"]
+  check-gate                 --proposal "<text>"
+  commit                     --status <SUPPORTED|REJECTED|ACCEPTED_SOLUTION> [--rule "<rule>"]
 `);
     break;
+  }
 }
+

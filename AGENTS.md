@@ -11,11 +11,12 @@ Antigravity and compliant agent harnesses discover capabilities in this reposito
 * **Continuous Rules**: `.agents/rules/*.md`
   * [`.agents/rules/epistemic-gate.md`](.agents/rules/epistemic-gate.md): Always-on epistemic rule enforcing pre-flight premise validation and fail-closed negative constraint firewalling.
 * **On-Demand Skills**:
+  * [`skills/logic/add-logic/SKILL.md`](skills/logic/add-logic/SKILL.md): **Step 1 (Interpretation Gate)**. Mandatory Human ↔ LLM gate decomposing premises and conclusions, confirming interpretation baseline verbatim before validation or challenge.
   * [`skills/logic/grill-logic/SKILL.md`](skills/logic/grill-logic/SKILL.md): **State Machine 2 (Human HITL Engine)**. Sequential interactive architectural interview walking a decision tree one branch at a time via `ask_question`.
   * [`skills/logic/self-grill/SKILL.md`](skills/logic/self-grill/SKILL.md): **State Machine 1 (Autonomous DMAD Engine)**. Hands-free epistemic audit driven by real empirical tool probes with token-locked subagent handshakes.
   * [`skills/setup/setup-grill-logic/SKILL.md`](skills/setup/setup-grill-logic/SKILL.md): Automated repository configuration skill.
   * [`skills/setup/clear-ledger/SKILL.md`](skills/setup/clear-ledger/SKILL.md): Automated ledger reset and archiving skill.
-* **Epistemic State Engine**: [`scripts/grill-state.mjs`](scripts/grill-state.mjs): Standalone, zero-dependency Node utility governing `.grill-logic/state.json`, $W/S$ calculations, token handshakes, and fail-closed diagnostic gates.
+* **Epistemic State Engine**: [`scripts/grill-state.mjs`](scripts/grill-state.mjs): Standalone, zero-dependency Node utility governing `.grill-logic/state.json`, $W/S$ calculations, token handshakes, deterministic invariant solving, and fail-closed diagnostic gates.
 
 ---
 
@@ -37,18 +38,25 @@ When operating as an AI agent in this environment, adhere to the truth-maintenan
 * Any invariant violation, probe omission, dispatch token mismatch, or active contrastive rule collision **fails closed immediately** with exit code 1 or 2 and sets `EXECUTION_BLOCKED`.
 * Code generation and implementation planning are **strictly prohibited** on blocked states. Silent pass-throughs are non-negotiable failures.
 
-### C. The Two Dedicated State Machines
-* **Machine 1 (`/self-grill [proposal]`)**:
-  - Hands-free / AFK loop.
-  - **Tool Invariant**: Every round requires an actual tool execution (`run_command`, `grep_search`, `view_file`, or subagent). Zero simulated text monologues.
-  - **Token Handshake**: Subagent must log audit via `grill-state.mjs record-subagent-audit` using the session `dispatch_token`.
-  - Blocks code generation if rejected; unlocks only with subagent sign-off.
-* **Machine 2 (`/grill-logic [topic]`)**:
-  - Interactive sequential interview.
-  - Decomposes topic into an ordered decision tree.
-  - **Strict Turn Yield**: Must call `ask_question` with options and recommendation, then **STOP GENERATION IMMEDIATELY**. Answering for the user is forbidden.
-  - Tracks behavioral $S_{\text{human}}$. If stagnant turns $\ge 3$, raises `HUMAN_STAGNATION_ALERT` requiring diagnostic query acknowledgment.
-  - Logs confirmed invariants into `LOGICAL_LEDGER.md` as `SUPPORTED`.
+### C. The Dedicated Protocol Pipeline
+* **Step 1: The Interpretation Gate (`/add-logic [prompt]`)**:
+  - Mandatory Human ↔ LLM gate preceding all challenge exchanges.
+  - Decomposes premises ($P_1 \dots P_n$) and conclusion ($C$). User corrections are accepted verbatim as baseline.
+  - Commits confirmed baseline to `LOGICAL_LEDGER.md` as `FORMULATED`.
+* **Step 2: Deterministic Validation (Solver)**:
+  - Validates deductive form ($P \vdash C$) before challenge begins.
+  - 5-Way Failure Taxonomy: Only `formally_invalid` auto-refutes; `malformed`, `unsupported_expression`, `inconsistent_premises`, and `undecidable` route to repair or probes.
+* **Step 3: Two-Party Challenge State Machines**:
+  - **Machine 1 (`/self-grill [proposal]`)**:
+    - LLM ↔ Subagent exchange (subagent carries delegated human authority; $W_{\text{subagent}}=0.8 > W_{\text{LLM}}=0.2$).
+    - **Empirical-Counter Rule**: Rejections require empirical probe evidence to be valid. No-counter enables procedural acceptance.
+    - **Tool Invariant**: Every round requires an actual tool execution (`run_command`, `grep_search`, `view_file`).
+    - **Token Handshake**: Subagent must authenticate via session `dispatch_token`.
+  - **Machine 2 (`/grill-logic [topic]`)**:
+    - Human ↔ LLM interactive interview.
+    - Decomposes topic into an ordered decision tree.
+    - **Strict Turn Yield**: Must call `ask_question` and **STOP GENERATION IMMEDIATELY**.
+    - Tracks behavioral $S_{\text{human}}$. If stagnant turns $\ge 3$, raises `HUMAN_STAGNATION_ALERT`.
 
 ### D. Mandatory Operational Release Gate (ADR-0001)
 * **Live In-Thread Verification**: Before any release, version tag, or deployment, the agent must execute live stochastic trials of `/self-grill` directly in the conversation thread.

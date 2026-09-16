@@ -4,6 +4,8 @@ The **Logical Ledger** is the truth-maintenance core of Grill-Logic. It synthesi
 
 Its primary purpose is to act as a **negative constraint firewall**: once an argument or premise is refuted, the ledger stores an explicit contrastive rule that prevents the agent from hallucinating back into the invalid reasoning path in later turns (*anti-semantic-attraction*).
 
+> **v1.1 revision.** This spec now reflects the `/add-logic` → Deterministic Validation → Solution Proposal/Acceptance decomposition of *Challenge* (see `Grill-Logic-Challenge-Update.md`). A self-audit found five overloaded or underspecified terms in the v1.0 schema: what counts as "accepted," what a solver failure means, whether formal validity implies empirical truth, whether silence implies agreement, and how many parties a challenge has. Section 2 (new), Section 4 (revised lifecycle), and Section 6 (revised schema) close those gaps. Section and field names changed; see the compatibility note at the end of Section 6.
+
 ---
 
 ## 1. Storage Modalities
@@ -17,7 +19,21 @@ Grill-Logic supports two ledger storage modalities:
 
 ---
 
-## 2. Ledger Schema
+## 2. Interpretation Gate: `/add-logic`
+
+No argument enters the ledger directly. Every entry is created by the `/add-logic` skill, which is a **mandatory prerequisite** to both `/grill-logic` and `/self-grill`. Neither challenge mode may create an entry on its own; if `/add-logic` hasn't already run for a given prompt, the challenge skill invokes it first.
+
+`/add-logic` is always a Human ↔ LLM exchange, in both modes — this holds even when the subsequent challenge is delegated to a subagent under `/self-grill` (see §4.3). It does three things, in order:
+
+1. **Decomposes** the premises and conclusion from the source prompt into logical form.
+2. **Presents** that interpretation to the user and waits for agreement. If the user corrects the logical set, the correction is accepted verbatim as the baseline — even if it is erroneous. Agreement here confirms *what is being discussed*, not that it is *true*.
+3. **Adds** the confirmed logical set to the ledger as `FORMULATED` (§4) — unless the ledger already contains the same entry, or the new one is too close to an existing entry to be a meaningful duplicate, in which case the model informs the user rather than silently declining.
+
+A `FORMULATED` entry carries no `SUPPORTED` / `REJECTED` / `UNCERTAIN` label. It is a confirmed baseline, not yet a validated one. It earns a label only after passing deterministic validation (§4) and, where applicable, a challenge exchange.
+
+---
+
+## 3. Ledger Schema
 
 ### Standard Markdown Table Format
 
@@ -31,47 +47,97 @@ Grill-Logic supports two ledger storage modalities:
 | **ARG-03** | **P1**: Project needs high-throughput zero-copy serialization on Windows.<br>**P_hidden**: `io_uring` is supported on Windows NT kernel. | **C**: Implement kernel-level async I/O via `io_uring`. | **REJECTED**<br>*(False Axiom)* | **Deterministic Probe** ($W$=high, empirical): `io_uring` is a Linux-specific kernel interface; Windows uses IOCP. | **Contrastive Rule**: Do not attempt `io_uring` architectures on Windows runtimes.<br>**Derived Action**: Implement Windows I/O Completion Ports (IOCP) ($C'$). |
 ```
 
+> **Note on the `Status` column.** A status is a *derived* value, not an assertion of truth. `SUPPORTED` means no rejection backed by an empirical counter currently stands against the entry — it does not mean the premises are proven true in an absolute sense. See §4.3 for the rule that derives it.
+
 ---
 
-## 3. Epistemic Status Lifecycle
+## 4. Epistemic Status Lifecycle
+
+### 4.1 State Diagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Formulated: Standard Form (P ⊢ C)
-    Formulated --> Challenged: Actor-Agnostic Stress Test
-    Challenged --> SUPPORTED: Falsification Failed / Sound
-    Challenged --> REJECTED: Flawed Inference / False Premise
-    Challenged --> UNCERTAIN: Empirical Question (Requires Probe)
-    UNCERTAIN --> DeterministicProbe: Run Sandbox / CLI / Test
-    DeterministicProbe --> SUPPORTED: Probe Validated
-    DeterministicProbe --> REJECTED: Probe Disproved
-    REJECTED --> NegativeConstraint: Emit CCoT Rule
-    REJECTED --> SUPERSEDED: Ground Facts Shift
-    SUPPORTED --> SUPERSEDED: Requirements Change
-    SUPPORTED --> ExecutionGating: Pass to GSD / SDD
+    [*] --> Formulated: /add-logic confirms interpretation (baseline, not yet validated)
+    Formulated --> Validating: Enter solver (deterministic check)
+    Validating --> Challenged: Structurally valid
+    Validating --> Reformulating: Malformed representation
+    Reformulating --> Validating: Resubmit corrected form
+    Validating --> UNCERTAIN: Unsupported expression / solver undecidable
+    Validating --> Formulated: Inconsistent premises (return to /add-logic)
+    Validating --> REJECTED: Formally invalid (genuine contradiction)
+    Challenged --> SUPPORTED: No rejection with empirical counter remains
+    Challenged --> REJECTED: Rejection substantiated by empirical counter
+    Challenged --> UNCERTAIN: Empirical question (requires probe)
+    UNCERTAIN --> DeterministicProbe: Run sandbox / CLI / test
+    DeterministicProbe --> SUPPORTED: Probe validated
+    DeterministicProbe --> REJECTED: Probe disproved (empirical counter obtained)
+    SUPPORTED --> TentativeSolution: Solution proposed, run through solver
+    TentativeSolution --> AcceptedSolution: No rejection with empirical counter remains
+    TentativeSolution --> REJECTED: Rejection substantiated by empirical counter
+    REJECTED --> NegativeConstraint: Emit CCoT rule
+    REJECTED --> SUPERSEDED: Ground facts shift
+    SUPPORTED --> SUPERSEDED: Requirements change
+    AcceptedSolution --> ExecutionGating: Pass to GSD / SDD
 ```
 
-### Status Definitions
+Two additions relative to v1.0:
+
+* **`Validating`** sits between `Formulated` and `Challenged` and represents the deterministic-solver step. It is not a single pass/fail gate — see the failure taxonomy in §4.2.
+* **`TentativeSolution` / `AcceptedSolution`** give the proposed conclusion its own lifecycle. A solution goes through the same solver check and the same Empirical-Counter Rule (§4.3) that a premise does; it does not inherit `SUPPORTED` from the premises it's built on.
+
+### 4.2 Status Definitions
+
+* **`FORMULATED`**:
+  - The output of `/add-logic`. The user has confirmed this is the correct decomposition of the prompt — not that it is true.
+  - Carries no epistemic label. Must pass `Validating` before it can be `Challenged`.
 
 * **`SUPPORTED`**:
-  - The inferential leap $(P_1 \land \dots \land P_n) \implies C$ is logically sound.
-  - All explicit and hidden premises have been verified or accepted by domain stakeholders.
+  - No rejection backed by an empirical counter currently stands against the inferential leap $(P_1 \land \dots \land P_n) \implies C$.
+  - A statement about the current state of the challenge exchange, not a claim of absolute truth. A `SUPPORTED` entry can still move to `SUPERSEDED` if ground facts shift.
   - The conclusion is cleared for downstream task planning and code generation.
+
 * **`REJECTED`**:
-  - The conclusion does not follow from the premises (non sequitur, false dilemma, unaddressed root cause), or a foundational premise is factually false.
-  - The entry must record an explicit **Contrastive Refutation Rule**.
+  - Reached one of two ways, and only these two:
+    1. The solver finds the argument **formally invalid** — the conclusion doesn't follow, or the premises are self-contradictory (a `Validating` outcome); or
+    2. A party's rejection is backed by an **empirical counter** — a probe result, cited evidence, or a demonstrated logical flaw (a `Challenged` outcome).
+  - A rejection with no empirical counter behind it does **not** move an entry to `REJECTED`. It is recorded, but the entry stays `SUPPORTED` or `UNCERTAIN` until the rejection is substantiated.
+  - The entry must record an explicit **Contrastive Refutation Rule** (§5).
   - Downstream execution of $C$ is strictly blocked.
+
 * **`UNCERTAIN`**:
-  - The truth value of a premise cannot be settled through pure reasoning or user dialogue; it requires empirical verification in the runtime environment (e.g., library ABI compatibility, sandbox execution).
+  - The truth value of a premise cannot be settled through pure reasoning or user dialogue, or the solver's `Validating` pass could not decide the expression (unsupported or undecidable).
   - The argument transitions out of `UNCERTAIN` only after a targeted spike or command probe completes.
+
+* **`TENTATIVE_SOLUTION`** *(intermediate, not terminal)*:
+  - A proposed conclusion — the original $C$ or a synthesized $C'$ — that has passed the solver check but has not yet cleared the Empirical-Counter Rule.
+
+* **`ACCEPTED_SOLUTION`**:
+  - A tentative solution against which no rejection backed by an empirical counter remains.
+  - This is a **procedural** acceptance: the protocol has grounds to advance, not a claim that both parties have affirmatively declared belief. See §4.3.
+
 * **`SUPERSEDED`**:
   - A previously audited argument whose foundational premises or external ground facts have materially changed (e.g., an upstream library releases native cross-platform support, or infrastructure constraints shift).
   - **Protocol**: Mark status as **`SUPERSEDED by ARG-XX`** linking to the new audit entry that validates the shifted premises.
   - **Constraint Release**: The prior negative constraint is deactivated, unblocking execution under the new premises while permanently preserving the historical audit trail.
 
+### 4.3 The Two-Party & Empirical-Counter Rule
+
+`/add-logic` (§2) is always Human ↔ LLM. The challenge exchange that follows has exactly two parties, never three, and which two depends on mode:
+
+| Mode | Party 1 | Party 2 |
+|---|---|---|
+| `/grill-logic` | Human | LLM |
+| `/self-grill` | LLM | Subagent |
+
+In `/self-grill`, the subagent acts on the human's delegated authority for the challenge exchange — it is not a third party the human must also separately agree with.
+
+The rule governing every status transition in §4.1 is: **a rejection is not accepted as valid unless it is backed by an empirical counter.** The absence of a counter from one party is not evidence of agreement — it may mean uncertainty, missing evidence, or that the point hasn't been evaluated. It only means the protocol currently has no substantiated objection blocking it, so it may proceed to `SUPPORTED` / `ACCEPTED_SOLUTION`.
+
+To make this auditable instead of a single accepted/not-accepted flag, entries carry a running **tally** — `agree`, `disagree`, `uncertain` — tracked separately for the argument's premises and, once one exists, for its solution. See the `tally` field in §6.
+
 ---
 
-## 4. Contrastive Refutation Rules (CCoT)
+## 5. Contrastive Refutation Rules (CCoT)
 
 When an argument is marked `REJECTED`, Grill-Logic formulates a contrastive boundary rule adhering to this syntax:
 
@@ -82,13 +148,15 @@ CONTRASTIVE RULE:
   MANDATED ALTERNATIVE: [Valid Conclusion C' or Diagnostic Step].
 ```
 
+A contrastive rule is only emitted for a genuine `REJECTED` outcome: formal invalidity found by the solver, or a rejection backed by an empirical counter (§4.3). A solver failure that turns out to be malformed input, an unsupported expression, or an undecidable case does not produce a contrastive rule — it routes back to reformulation, to `/add-logic`, or to `UNCERTAIN` instead (§4.2).
+
 ### Why This Pre-empts Failure Modes
 1. **Prevents Regression**: LLMs naturally drift toward familiar architectural tropes (e.g., reaching for Redis, Kafka, or microservices). Storing contrastive refutations directly in context blocks the semantic gravity of default patterns.
 2. **Deterministic Pre-flight Checks**: Procedural engines (such as GSD or Spec-Driven Development) inspect the ledger prior to creating tasks. Any task relying on an argument flagged `REJECTED` is automatically rejected at the boundary.
 
 ---
 
-## 5. Machine-Readable Schema (Optional / Tool Integration)
+## 6. Machine-Readable Schema (Optional / Tool Integration)
 
 For automated pipelines or sub-agents that consume the ledger programmatically:
 
@@ -99,16 +167,21 @@ For automated pipelines or sub-agents that consume the ledger programmatically:
   "type": "object",
   "required": ["ledger_version", "entries"],
   "properties": {
-    "ledger_version": { "type": "string", "enum": ["1.0.0"] },
+    "ledger_version": { "type": "string", "enum": ["1.0.0", "1.1.0"] },
     "project_name": { "type": "string" },
     "entries": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["arg_id", "source_prompt", "premises", "conclusion", "status", "challenger"],
+        "required": ["arg_id", "source_prompt", "premises", "conclusion", "status", "mode", "challenger"],
         "properties": {
           "arg_id": { "type": "string" },
           "source_prompt": { "type": "string" },
+          "mode": {
+            "type": "string",
+            "enum": ["grill-logic", "self-grill"],
+            "description": "Which two-party challenge exchange this entry belongs to: human/LLM, or LLM/subagent. /add-logic itself is always human/LLM regardless of this value."
+          },
           "premises": {
             "type": "array",
             "items": {
@@ -122,13 +195,58 @@ For automated pipelines or sub-agents that consume the ledger programmatically:
             }
           },
           "conclusion": { "type": "string" },
-          "status": { "type": "string", "enum": ["SUPPORTED", "REJECTED", "UNCERTAIN"] },
+          "status": {
+            "type": "string",
+            "enum": ["FORMULATED", "SUPPORTED", "REJECTED", "UNCERTAIN", "TENTATIVE_SOLUTION", "ACCEPTED_SOLUTION", "SUPERSEDED"]
+          },
+          "validation": {
+            "type": "object",
+            "description": "Result of the deterministic-solver check (§4.1). Only 'formally_invalid' justifies REJECTED on its own; every other result routes elsewhere per §4.2.",
+            "properties": {
+              "result": {
+                "type": "string",
+                "enum": ["valid", "formally_invalid", "malformed", "unsupported_expression", "inconsistent_premises", "undecidable"]
+              },
+              "notes": { "type": "string" }
+            }
+          },
+          "tally": {
+            "type": "object",
+            "description": "Running agreement record backing the derived status (§4.3), tracked separately for the argument's premises and its solution.",
+            "properties": {
+              "premises": {
+                "type": "object",
+                "properties": {
+                  "agree": { "type": "integer" },
+                  "disagree": { "type": "integer" },
+                  "uncertain": { "type": "integer" }
+                }
+              },
+              "solution": {
+                "type": "object",
+                "properties": {
+                  "agree": { "type": "integer" },
+                  "disagree": { "type": "integer" },
+                  "uncertain": { "type": "integer" }
+                }
+              }
+            }
+          },
           "challenger": {
             "type": "object",
-            "required": ["actor", "evidence"],
+            "required": ["party", "actor", "evidence"],
             "properties": {
+              "party": {
+                "type": "string",
+                "enum": ["human", "llm", "subagent"],
+                "description": "Which of the two parties named in `mode` raised this challenge."
+              },
               "actor": { "type": "string", "enum": ["deterministic_probe", "internal_cot", "human_mcq"] },
-              "evidence": { "type": "string" }
+              "evidence": { "type": "string" },
+              "empirical_counter": {
+                "type": "boolean",
+                "description": "True only if `evidence` constitutes an empirical counter per §4.3. `status: REJECTED` requires this to be true, or `validation.result` to be 'formally_invalid'."
+              }
             }
           },
           "contrastive_rule": { "type": "string" },
@@ -139,3 +257,5 @@ For automated pipelines or sub-agents that consume the ledger programmatically:
   }
 }
 ```
+
+**Compatibility:** `ledger_version: "1.0.0"` remains valid for existing ledgers. The new fields — `mode`, `validation`, `tally`, `challenger.party`, `challenger.empirical_counter` — are optional on `1.0.0` entries and required going forward under `1.1.0`.

@@ -24,12 +24,20 @@ node scripts/grill-state.mjs check-gate --proposal "<proposal>"
 - **If exit code is 1 (`EPISTEMIC_FIREWALL_VIOLATION`)**: **HALT IMMEDIATELY**. Code generation is hard-blocked. Output the diagnostic block, cite the active `REJECTED` rule from `LOGICAL_LEDGER.md`, and pivot to the supported alternative.
 - **If exit code is 0**: Proceed to Step 2.
 
-### 2. Epistemic Mode Routing
+### 2. Interpretation Gate (`/add-logic`)
+Before entering either challenge state machine, the proposal must pass the **Interpretation Gate (`/add-logic`)**:
+- Decompose explicit premises ($P_1 \dots P_n$) and proposed conclusion ($C$).
+- Present interpretation to the user. User corrections become the baseline verbatim.
+- Verify deduplication against `LOGICAL_LEDGER.md` and commit entry as `FORMULATED`.
+- Execute deterministic validation via the solver (5-way taxonomy). Only proceed to challenge if structurally valid.
+
+### 3. Epistemic Mode Routing
 - **If autonomous / AFK proposal** (`self-grill:`, `autonomous:`, or agent-proposed architecture):
   - Execute **State Machine 1 (`/self-grill`)**.
   - Asymmetric Autonomy: $W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$. $S_{\text{LLM}}$ applies at full strength.
-  - **Tool Invariant**: Every round requires a real tool probe (`grep_search`, `run_command`, `view_file`, or subagent). Zero simulated text monologues.
-  - **Token Handshake**: Subagent must log audit with matching `dispatch_token`.
+  - **Empirical-Counter Rule**: Rejections must be substantiated by empirical tool probe findings.
+  - **Tool Invariant**: Every round requires a real tool probe (`grep_search`, `run_command`, `view_file`). Zero simulated text monologues.
+  - **Token Handshake**: Subagent must log audit with matching session `dispatch_token`.
   - Gate code generation until `SUPPORTED` is committed with subagent sign-off.
 - **If collaborative / interactive design** (`interview me`, `/grill-logic`):
   - Execute **State Machine 2 (`/grill-logic`)**.
@@ -37,5 +45,5 @@ node scripts/grill-state.mjs check-gate --proposal "<proposal>"
   - **Turn Yield Invariant**: Call `ask_question` and **STOP GENERATION IMMEDIATELY**. The model is physically forbidden from answering its own questions.
   - Log user turns. If $C_{\text{stagnant}} \ge 3$, emit the diagnostic stagnation query.
 
-### 3. Execution Gate
-Code generation is permitted **only** when the proposal achieves `SUPPORTED` status in `LOGICAL_LEDGER.md`. Any invariant violation or unhandled error **fails closed** and terminates execution.
+### 4. Execution Gate
+Code generation is permitted **only** when the proposal achieves `SUPPORTED` or `ACCEPTED_SOLUTION` status in `LOGICAL_LEDGER.md`. Any invariant violation or unhandled error **fails closed** and terminates execution.

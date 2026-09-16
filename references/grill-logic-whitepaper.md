@@ -1,9 +1,23 @@
 # Grill-Logic Architecture Whitepaper: Game-Theoretic Epistemic Verification for Agentic Coding
 
-**Document Version:** 2.1.0  
+**Document Version:** 2.2.0  
 **Status:** Canonical Architectural Synthesis  
 **Authors:** Paragon UX / Grill-Logic Core Architecture Team  
 **Date:** September 2026  
+
+---
+
+## Revision History
+
+**v2.2.0 (this revision).** Closes five ambiguities surfaced by a self-audit of the Challenge protocol (see `Grill-Logic-Challenge-Update.md`):
+
+1. Formalizes `/add-logic` as a mandatory interpretation gate preceding both state machines (§2.1.1, §5.0).
+2. Adds an explicit deterministic-validation phase with a solver-failure taxonomy, so a failed check is no longer treated as automatic refutation (§5.0.1).
+3. Separates formal validity from empirical truth (§5.0.1).
+4. Replaces "no counter implies agreement" with a two-party Empirical-Counter Rule and an agreement tally (§5.2).
+5. States the two-party invariant explicitly, including that `/add-logic` itself is always Human ↔ LLM even under Self-Grill (§2.1.1).
+
+See §7 for the updated failure-mode remediation matrix (rows 10–14) and `logical-ledger-spec.md` v1.1 for the corresponding schema changes.
 
 ---
 
@@ -11,7 +25,7 @@
 
 Modern large language model (LLM) coding agents routinely fail during complex architectural reasoning due to seven interconnected cognitive and architectural vulnerabilities: **sycophancy**, **premature solution offering** ("solution vomiting" / "recommendation forking"), **confirmation bias**, **academic jargon leakage**, **simulated monologue theater** (in which a single agent simulates adversarial debate within one inference turn without genuine epistemic tension), **correlated errors across homogeneous judges** (where multiple LLMs share inductive biases and agree on flawed premises), and **"rigor theater"** (unprincipled attempts to calculate epistemic truth via continuous floating-point formulas or search rank fusion).
 
-This paper introduces the architecture of **Grill-Logic v2.1**, a harness-agnostic epistemic verification system founded on Diverse Multi-Agent Debate (DMAD lineage; ICLR 2025), orthogonal Chain-of-Thought (CoT) reasoning topologies, asymmetric autonomy weighting, and strict state-gated execution. We formalize two core variables: **Autonomy Weight ($W$)**, an ordinal ranking derived from evidence-independence and dependence-clarity, and **Skepticism Signal ($S$)**, a meta-cognitive evaluation whose operational impact scales inversely with the target's $W$. By decoupling *challenger-credibility* from *target-deference*, enforcing asymmetric CoT topologies (Challenger Backward Inversion vs. Proposer Forward Synthesis), adhering to a strict **90% challenge / 10% solution invariant**, and governing verification via **Frontier-Depletion Epistemic Closure**, Grill-Logic guarantees rigorous architectural stress-testing without disempowering human judgment or degenerating into unconstrained prompt theater.
+This paper introduces the architecture of **Grill-Logic v2.2**, a harness-agnostic epistemic verification system founded on Diverse Multi-Agent Debate (DMAD lineage; ICLR 2025), orthogonal Chain-of-Thought (CoT) reasoning topologies, asymmetric autonomy weighting, and strict state-gated execution. We formalize two core variables: **Autonomy Weight ($W$)**, an ordinal ranking derived from evidence-independence and dependence-clarity, and **Skepticism Signal ($S$)**, a meta-cognitive evaluation whose operational impact scales inversely with the target's $W$. By decoupling *challenger-credibility* from *target-deference*, enforcing asymmetric CoT topologies (Challenger Backward Inversion vs. Proposer Forward Synthesis), adhering to a strict **90% challenge / 10% solution invariant**, and governing verification via **Frontier-Depletion Epistemic Closure**, Grill-Logic guarantees rigorous architectural stress-testing without disempowering human judgment or degenerating into unconstrained prompt theater.
 
 ---
 
@@ -56,6 +70,20 @@ Independence *conditions* dependence-clarity: an agent whose context is burdened
 * **Delegation in Self-Grill**:
   $$W_{\text{human}} \xrightarrow{\text{delegation}} W_{\text{subagent}}$$
   When the human commands the system to run Self-Grill, they vest their challenge authority in the freshly spawned subagent.
+
+### 2.1.1 The Two-Party Invariant
+
+Every stage of the protocol has exactly two parties, never three — but which two depends on the stage:
+
+* **Interpretation (`/add-logic`)** is always Human ↔ LLM, in both modes. The human confirms or corrects the model's decomposition of the prompt before anything is committed to the ledger. This happens before the state machines in §5 begin.
+* **Challenge exchange** depends on mode:
+
+| Mode | Party 1 | Party 2 |
+|---|---|---|
+| User Grill-Logic | Human ($W_{\text{human}}$) | LLM ($W_{\text{LLM}}$) |
+| Self-Grill | LLM ($W_{\text{LLM}}$) | Subagent ($W_{\text{subagent}}$) |
+
+In Self-Grill, the subagent does not join the protocol as an independent third party. It acts under $W_{\text{human}} \xrightarrow{\text{delegation}} W_{\text{subagent}}$ (above): the human, having already set the baseline together with the LLM during `/add-logic`, delegates challenge authority to the subagent for that exchange. Any rule elsewhere in this document that refers to "the other party" or "no counter" resolves to exactly one of the two parties above, depending on stage and mode — never a third.
 
 ---
 
@@ -236,6 +264,32 @@ Once concordance on conclusion $C$ (or synthesized $C'$) is established, solutio
 
 Grill-Logic formalizes its execution through two rigorous, deterministic state graphs.
 
+### 5.0 The Interpretation Gate: `/add-logic`
+
+Both state graphs below assume `/add-logic` has already run for the proposal under review. If it hasn't, either graph invokes it as its own first action rather than proceeding without a confirmed baseline.
+
+`/add-logic` is always Human ↔ LLM (§2.1.1), even when the challenge that follows will be delegated to a subagent under Self-Grill:
+
+1. The LLM decomposes the proposal into premises ($P_1 \ldots P_n$) and a conclusion ($C$).
+2. The LLM presents that decomposition to the human. The human either confirms it or corrects it; a correction is accepted verbatim as the new baseline, even if erroneous. Confirmation establishes what is being discussed — not that it is true.
+3. The LLM checks `LOGICAL_LEDGER.md` for a matching or near-duplicate entry. If none exists, it commits the confirmed logical set as `FORMULATED`. If a match exists, it informs the human rather than silently skipping the write.
+
+#### 5.0.1 Deterministic Validation and the Solver-Failure Taxonomy
+
+A `FORMULATED` entry is not yet challengeable. It must first pass a deterministic solver check, which validates the *form* of the argument — whether $C$ follows from $P_1 \ldots P_n$ — and nothing else. The solver cannot establish that a premise is true in the world; that is the job of the challenge exchange that follows, using cited evidence and tool probes, not the solver.
+
+A solver run returns one of five outcomes, and only one of them is a refutation:
+
+| Outcome | Meaning | Routing |
+|---|---|---|
+| **Formally invalid** | The conclusion doesn't follow, or the premises are self-contradictory. | `REJECTED` immediately — the only outcome that auto-refutes. |
+| **Malformed** | The logical set wasn't translated into solver-readable form correctly. | Reformulate the representation and re-run. Not a refutation. |
+| **Unsupported expression** | The solver can't represent the claim being made. | Fall back to internal reasoning; flag it in the ledger. Not a refutation. |
+| **Inconsistent premises** | The premise set itself contains a contradiction independent of $C$. | Return to `/add-logic` to resolve which premise is wrong. |
+| **Undecidable** | The solver can't determine an answer either way. | Mark `UNCERTAIN`; route to an empirical probe. |
+
+Only genuine formal invalidity produces an immediate `REJECTED` and a Contrastive Refutation Rule. Everything else keeps the argument alive and routes it toward reformulation, `/add-logic`, or an empirical probe — never toward a false refutation.
+
 ```
 ===================================================================================
 MODE A: USER GRILL-LOGIC (Interactive Concordance Loop)
@@ -244,10 +298,24 @@ MODE A: USER GRILL-LOGIC (Interactive Concordance Loop)
        [ STATE: S_U0_INIT ] User submits architectural proposal
                 │
                 ▼
+       [ STATE: S_U0B_ADD_LOGIC ] /add-logic — Human ↔ LLM, always (§2.1.1, §5.0)
+                ├── Decompose premises (P1..Pn) and conclusion (C)
+                ├── Present interpretation; human confirms, or corrects verbatim
+                ├── Dedup check against LOGICAL_LEDGER.md
+                └── Commit confirmed entry as FORMULATED
+                │
+                ▼
        [ STATE: S_U1_PREMISE_ISOLATION ]
-                ├── Extract Explicit Premises (P1..Pn)
-                ├── Expose Latent/Hidden Assumptions (P_hidden)
-                └── Isolate Turnstile (P => C)
+                ├── Expose Latent/Hidden Assumptions (P_hidden) beyond the FORMULATED set
+                └── Isolate Turnstile (P => C) for solver input
+                │
+                ▼
+       [ STATE: S_U1B_VALIDATION ] Deterministic solver check (§5.0.1)
+                ├── Valid                    → proceed to S_U2_CHALLENGE
+                ├── Malformed                 → reformulate representation, retry
+                ├── Unsupported / Undecidable → mark UNCERTAIN, route to probe
+                ├── Inconsistent premises     → return to S_U0B_ADD_LOGIC
+                └── Formally invalid          → REJECTED immediately, halt (only auto-refuting case)
                 │
                 ▼
        [ STATE: S_U2_CHALLENGE ]
@@ -257,28 +325,51 @@ MODE A: USER GRILL-LOGIC (Interactive Concordance Loop)
                 │
                 ▼
        [ STATE: S_U3_AWAIT_USER ] Human evaluates challenge
-               /                        \
-      (User Counters)               (User Accepts)
-             /                            \
-            ▼                              ▼
-  [ STATE: S_U4_EVAL_COUNTER ]    [ STATE: S_U6_CONCORDANCE ]
-     ├── Update Behavioral Log         ├── Record Supported in Ledger
-     │   (New Proposition: Y/N)        └── Unlock Solution Gating
-     ├── Compute S_human (dampened)    │
-     └── Synthesize Middle Ground      ▼
-     +-----> Loop to S_U2         [ STATE: S_U7_SOLUTION_PRESENTATION ]
-                                       ├── Present 3 Options + Free Response
-                                       ├── Execute harness `ask_question` tool
-                                       └── STOP GENERATION (Strict Yield)
-                                       │
-                                       ▼
-                                  [ STATE: S_U8_TERMINATION ]
+               /                              \
+      (User Counters)          (User Accepts, or has no empirical counter)
+             /                                  \
+            ▼                                    ▼
+  [ STATE: S_U4_EVAL_COUNTER ]          [ STATE: S_U6_CONCORDANCE ]
+     ├── Empirical counter cited?           ├── Record SUPPORTED in Ledger —
+     │    Yes → tally.premises.disagree++,  │   procedural: no rejection backed
+     │          re-evaluate; may REJECT     │   by an empirical counter remains,
+     │    No  → does not count as a         │   not a claim the human agrees
+     │          rejection (§2.1.1, §5.0)    └── Unlock Solution Gating
+     ├── Update Behavioral Log                   │
+     │   (New Proposition: Y/N)                  ▼
+     ├── Compute S_human (dampened)      [ STATE: S_U7_SOLUTION_PRESENTATION ]
+     └── Synthesize Middle Ground             ├── Run C (or synthesized C') through
+     +-----> Loop to S_U2                     │   solver → TENTATIVE_SOLUTION
+                                               ├── Present 3 Options + Free Response
+                                               ├── Execute harness `ask_question` tool
+                                               └── STOP GENERATION (Strict Yield)
+                                               │
+                                               ▼
+                                          [ STATE: S_U8_TERMINATION ]
+                                               └── Chosen option → ACCEPTED_SOLUTION once
+                                                   tally.solution shows no rejection
+                                                   backed by an empirical counter
 
 ===================================================================================
 MODE B: SELF-GRILL (Autonomous Frontier-Depletion Epistemic Engine)
 ===================================================================================
 
        [ STATE: S_A0_INIT ] Proposal ingested & Input Gate validated
+                │
+                ▼
+       [ STATE: S_A0B_ADD_LOGIC ] /add-logic — Human ↔ LLM, always (§2.1.1, §5.0)
+                ├── Decompose premises (P1..Pn) and conclusion (C)
+                ├── Present interpretation; human confirms, or corrects verbatim
+                ├── Dedup check against LOGICAL_LEDGER.md
+                └── Commit confirmed entry as FORMULATED
+                │
+                ▼
+       [ STATE: S_A0C_VALIDATION ] Deterministic solver check (§5.0.1)
+                ├── Valid                    → proceed to S_A1_TOKEN_ISSUE
+                ├── Malformed                 → reformulate representation, retry
+                ├── Unsupported / Undecidable → mark UNCERTAIN, route to probe
+                ├── Inconsistent premises     → return to S_A0B_ADD_LOGIC
+                └── Formally invalid          → REJECTED immediately, halt (only auto-refuting case)
                 │
                 ▼
        [ STATE: S_A1_TOKEN_ISSUE ] State engine generates session `dispatch_token`
@@ -297,16 +388,20 @@ MODE B: SELF-GRILL (Autonomous Frontier-Depletion Epistemic Engine)
                 └── 0% SOLUTIONS PERMITTED (90/10 Invariant)
                 │
                 ▼
-       [ STATE: S_A4_ROUND_2_PROPOSER_CONFRONTATION ]
+       [ STATE: S_A4_ROUND_2_PROPOSER_CONFRONTATION ] — the two parties: LLM ↔ Subagent (§2.1.1)
                /                                      \
       (LLM Counters with C')                    (LLM Concedes)
              /                                          \
             ▼                                            ▼
   [ STATE: S_A5_SUBAGENT_EVAL ]                [ STATE: S_A6_REJECTION ]
-     ├── Proposer Forward Synthesis CoT           ├── F collapses (F = ∅)
-     ├── Challenger computes structural S_LLM     ├── Commit REJECTED to Ledger
-     │   (S_syco, S_conf, F_einstellung)          └── Hard-block code generation
-     ├── Run follow-up probe on C'
+     ├── Proposer Forward Synthesis CoT           ├── F collapses (F = ∅) — the
+     ├── Challenger computes structural S_LLM     │   concession stands against the
+     │   (S_syco, S_conf, F_einstellung)          │   Round 1 empirical probe, which
+     ├── Run follow-up probe on C'                │   is itself the empirical counter
+     ├── Each F item clears only via an           ├── Commit REJECTED to Ledger
+     │   empirical counter or explicit             └── Hard-block code generation
+     │   concession, never mere silence
+     │   (§2.1.1, §4.3 ledger spec)
      │
      ├── Contradictions Remain (F ≠ ∅ after R2) ──> [ Escalate to W_human = 1.0 ]
      │
@@ -317,10 +412,13 @@ MODE B: SELF-GRILL (Autonomous Frontier-Depletion Epistemic Engine)
                 ├── Subagent executes signoff-subagent --token [token]
                 ├── Commit SUPPORTED to Ledger
                 └── Generate Solution Triad (Minimal, Robust, Scale)
+                    each option enters as TENTATIVE_SOLUTION until tallied
                 │
                 ▼
        [ STATE: S_A8_HUMAN_DELIVERY ]
-                └── Deliver verified architecture with empirical findings
+                └── Deliver verified architecture with empirical findings;
+                    chosen option → ACCEPTED_SOLUTION once tally.solution
+                    shows no rejection backed by an empirical counter
 ```
 
 ### 5.1 Frontier-Depletion Epistemic Closure Protocol
@@ -369,6 +467,11 @@ The following matrix documents how Grill-Logic v2.1 systematically remediates ea
 | **7. Recommendation Forking / Premature Concession** | Challenger suggests alternative architectures in Round 1, short-circuiting debate. | **0% Solution Round 1 Invariant**: Challenger may only expose assumptions and run probes. Solutions unlocked post-concordance only. |
 | **8. Arbitrary Debate Oscillation / Stagnation** | Debates terminate on arbitrary turn counts or subjective feelings. | **Frontier-Depletion Closure**: Terminate when $\mathcal{F} = \emptyset$. Max 2 autonomous rounds before mandatory human escalation. |
 | **9. Pseudo-Math & "Rigor Theater"** | Abstract floating-point scores or RRF calculations pretend to quantify truth. | **Structural Impossibility**: Binary state barriers, token locks, tool execution proofs, and fail-closed exit codes. |
+| **10. Overloaded Acceptance Semantics** | Conflated interpretation confirmation, premise truth, solver validity, and consensus under a single flag. | **Epistemic State Disaggregation (§5.0, §5.2)**: Disaggregated into discrete states: `FORMULATED`, `Validating`, `SUPPORTED`, `TENTATIVE_SOLUTION`, and `ACCEPTED_SOLUTION`. |
+| **11. Solver Failure Treated as Refutation** | Treated malformed representations, parser limits, or undecidability as proving premises false. | **5-Way Solver Taxonomy (§5.0.1)**: Only `formally_invalid` auto-refutes. Other failure types route to reformulation, premise repair, or empirical probes. |
+| **12. Conflation of Formal Validity and Empirical Truth** | Believed passing deductive structure ($P \vdash C$) proved premises exist in reality ($P \in \text{Reality}$). | **Structural/Empirical Decoupling (§5.0.1)**: Solvers evaluate deductive validity only. Ground truth is strictly established via empirical tool probes. |
+| **13. Silence Conflated with Agreement** | Assumed absence of a counter-argument equaled positive human or subagent assent. | **The Empirical-Counter Rule & Tallies (§2.1.1, §5.2)**: A rejection is accepted only when backed by empirical counter-evidence. Agreement tracked via 3-way tallies (`agree`, `disagree`, `uncertain`). |
+| **14. Ambiguous Agent Hierarchy / 3rd-Party Drift** | Treated subagents as independent third parties requiring separate consensus loops. | **Strict Two-Party Invariant (§2.1.1)**: Exactly two parties per mode (`/grill-logic`: Human ↔ LLM; `/self-grill`: LLM ↔ Subagent with delegated authority). |
 
 ---
 
