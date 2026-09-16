@@ -147,9 +147,9 @@ export function cmdInit(args) {
       },
       s_llm: {
         risk_level: 'UNASSESSED',
-        sycophancy_score: 0.0,
-        confirmation_bias_score: 0.0,
-        fixed_mental_set: false,
+        sycophancy_score: null,
+        confirmation_bias_score: null,
+        fixed_mental_set: null,
         subagent_signoff: false,
         suggested_skepticism: null
       }
@@ -215,9 +215,6 @@ export function cmdRecordSubagentAudit(args) {
   }
 
   const riskLevel = getArgStr(args, 'risk', 'MODERATE').toUpperCase();
-  const sycoScore = parseFloat(args.syco || '0.0');
-  const confScore = parseFloat(args.conf || '0.0');
-  const fixedSet = String(args['fixed-set']).toLowerCase() === 'true';
   const verdict = getArgStr(args, 'verdict', 'REJECTED').toUpperCase();
   const rule = getArgStr(args, 'rule');
   const probeTool = getArgStr(args, 'probe-tool');
@@ -239,8 +236,36 @@ export function cmdRecordSubagentAudit(args) {
   }
 
   state.subagent_called = true;
-  state.current_state = 'SUBAGENT_AUDIT_LOGGED';
   state.updated_at = new Date().toISOString();
+
+  state.probes_executed.push({
+    round: state.probes_executed.length + 1,
+    tool: probeTool,
+    finding: probeFinding,
+    timestamp: new Date().toISOString()
+  });
+
+  if (verdict === 'CHALLENGE_ISSUED') {
+    // Round 1 Challenge: S_LLM cannot be scored yet because LLM has not responded to the challenge!
+    state.current_state = 'AWAITING_LLM_RESPONSE';
+    state.verdict = 'CHALLENGE_ISSUED';
+    state.contrastive_rule = rule;
+    state.epistemic_context.s_llm.risk_level = riskLevel;
+    state.epistemic_context.s_llm.suggested_skepticism = rule;
+    saveState(state);
+
+    console.log(`[GRILL-STATE] Subagent challenge recorded successfully.`);
+    console.log(`[GRILL-STATE] State: AWAITING_LLM_RESPONSE (S_LLM unassessed until target responds)`);
+    console.log(`[GRILL-STATE] Empirical Probe: [${probeTool}] ${probeFinding}`);
+    return;
+  }
+
+  // Final / Evaluated Audit: Score S_LLM based on how target LLM reacted to challenge (or direct resolution)
+  const sycoScore = parseFloat(args.syco || '0.0');
+  const confScore = parseFloat(args.conf || '0.0');
+  const fixedSet = String(args['fixed-set']).toLowerCase() === 'true';
+
+  state.current_state = 'SUBAGENT_AUDIT_LOGGED';
   state.epistemic_context.s_llm = {
     risk_level: riskLevel,
     sycophancy_score: sycoScore,
@@ -249,12 +274,6 @@ export function cmdRecordSubagentAudit(args) {
     subagent_signoff: verdict === 'SUPPORTED',
     suggested_skepticism: rule
   };
-  state.probes_executed.push({
-    round: state.probes_executed.length + 1,
-    tool: probeTool,
-    finding: probeFinding,
-    timestamp: new Date().toISOString()
-  });
   state.verdict = verdict;
   state.contrastive_rule = rule;
 
@@ -262,6 +281,90 @@ export function cmdRecordSubagentAudit(args) {
 
   console.log(`[GRILL-STATE] Subagent audit recorded successfully.`);
   console.log(`[GRILL-STATE] Verdict: ${verdict} | Risk Level: ${riskLevel} | Tool: ${probeTool}`);
+}
+
+export function cmdRecordLlmResponse(args) {
+  const state = loadState();
+  if (!state) {
+    emitDiagnostic({
+      code: 'NO_ACTIVE_SESSION',
+      reason: 'Attempted to record LLM response without an active session.',
+      remediation: 'Initialize session first via `node scripts/grill-state.mjs init --machine autonomous ...`'
+    });
+    process.exit(1);
+  }
+
+  if (state.active_machine !== 'AUTONOMOUS_DMAD') {
+    emitDiagnostic({
+      code: 'INVALID_MACHINE_OPERATION',
+      machine: state.active_machine,
+      reason: 'LLM responses can only be recorded on AUTONOMOUS_DMAD machine.',
+      remediation: 'Use user turn recording for HUMAN_HITL machine.'
+    });
+    process.exit(1);
+  }
+
+  const token = getArgStr(args, 'token');
+  if (!token || token !== state.dispatch_token) {
+    emitDiagnostic({
+      code: 'DISPATCH_TOKEN_MISMATCH',
+      machine: state.active_machine,
+      state: state.current_state,
+      reason: `Submitted invalid or mismatched dispatch token: '${token}'. Expected: '${state.dispatch_token}'.`,
+      remediation: 'Provide matching session dispatch token.'
+    });
+    process.exit(1);
+  }
+
+  if (state.current_state !== 'AWAITING_LLM_RESPONSE') {
+    emitDiagnostic({
+      code: 'UNEXPECTED_STATE_TRANSITION',
+      machine: state.active_machine,
+      state: state.current_state,
+      reason: `Cannot record LLM response when current state is '${state.current_state}'. Expected: 'AWAITING_LLM_RESPONSE'.`,
+      remediation: 'Subagent must issue a challenge via `--verdict CHALLENGE_ISSUED` before target LLM records response.'
+    });
+    process.exit(1);
+  }
+
+  const type = getArgStr(args, 'type').toLowerCase();
+  const response = getArgStr(args, 'response');
+
+  if (type !== 'counter' && type !== 'concede') {
+    emitDiagnostic({
+      code: 'INVALID_RESPONSE_TYPE',
+      reason: `LLM response type must be 'counter' or 'concede'. Received: '${type}'`,
+      remediation: 'Specify `--type counter` (with refined proposal) or `--type concede`.'
+    });
+    process.exit(1);
+  }
+
+  if (!response) {
+    emitDiagnostic({
+      code: 'EMPTY_RESPONSE_PAYLOAD',
+      reason: 'LLM response text cannot be empty.',
+      remediation: 'Provide `--response "<explanation or refined proposal>"`.'
+    });
+    process.exit(1);
+  }
+
+  if (type === 'concede') {
+    state.current_state = 'LLM_CONCEDED';
+    state.verdict = 'REJECTED';
+  } else {
+    state.current_state = 'AWAITING_SUBAGENT_EVAL';
+  }
+
+  state.turn_count += 1;
+  state.llm_response = {
+    type,
+    response,
+    timestamp: new Date().toISOString()
+  };
+  state.updated_at = new Date().toISOString();
+
+  saveState(state);
+  console.log(`[GRILL-STATE] Recorded LLM response (${type.toUpperCase()}). Next state: ${state.current_state}`);
 }
 
 export function cmdSignoffSubagent(args) {
@@ -456,6 +559,32 @@ export function cmdCommit(args) {
 
   // Fail-Closed Epistemic Guards:
   if (state.active_machine === 'AUTONOMOUS_DMAD') {
+    // 0. Multi-Round State Transition Guards
+    if (state.current_state === 'AWAITING_LLM_RESPONSE') {
+      emitDiagnostic({
+        code: 'CHALLENGE_UNADDRESSED',
+        machine: state.active_machine,
+        state: state.current_state,
+        targetW: state.epistemic_context.target_w,
+        challengerW: state.epistemic_context.challenger_w,
+        reason: 'Cannot commit ledger while a subagent challenge is awaiting target LLM response.',
+        remediation: 'Target LLM must respond via `record-llm-response --type counter|concede`.'
+      });
+      process.exit(1);
+    }
+    if (state.current_state === 'AWAITING_SUBAGENT_EVAL') {
+      emitDiagnostic({
+        code: 'EVALUATION_PENDING',
+        machine: state.active_machine,
+        state: state.current_state,
+        targetW: state.epistemic_context.target_w,
+        challengerW: state.epistemic_context.challenger_w,
+        reason: 'Cannot commit ledger while subagent evaluation of LLM response is pending.',
+        remediation: 'Subagent must evaluate LLM response via `record-subagent-audit`.'
+      });
+      process.exit(1);
+    }
+
     // 1. Must have executed an actual probe
     if (!state.probes_executed || state.probes_executed.length === 0) {
       emitDiagnostic({
@@ -582,6 +711,9 @@ switch (action) {
   case 'record-subagent-audit':
     cmdRecordSubagentAudit(parsedArgs);
     break;
+  case 'record-llm-response':
+    cmdRecordLlmResponse(parsedArgs);
+    break;
   case 'signoff-subagent':
     cmdSignoffSubagent(parsedArgs);
     break;
@@ -601,7 +733,8 @@ switch (action) {
     console.log(`Grill-State CLI:
   init                     --machine <autonomous|human> --input "<text>"
   status
-  record-subagent-audit    --token <tok> --risk <LOW|MOD|HIGH> --syco <0-1> --conf <0-1> --fixed-set <bool> --probe-tool <tool> --probe-finding "<text>" --verdict <SUPPORTED|REJECTED> --rule "<rule>"
+  record-subagent-audit    --token <tok> [--risk <LOW|MOD|HIGH>] [--syco <0-1>] [--conf <0-1>] [--fixed-set <bool>] --probe-tool <tool> --probe-finding "<text>" --verdict <CHALLENGE_ISSUED|SUPPORTED|REJECTED> [--rule "<rule>"]
+  record-llm-response      --token <tok> --type <counter|concede> --response "<text>"
   signoff-subagent         --token <tok>
   record-user-turn         --new-prop <true|false> [--choice "<text>"]
   record-diagnostic-ack

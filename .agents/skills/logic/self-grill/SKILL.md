@@ -18,10 +18,12 @@ Self-Grill executes **State Machine 1 (Autonomous AI Iterative Self-Prompting)**
 1. **No Simulated Text Monologues**: Every challenge round requires a **real tool execution** (`run_command`, `grep_search`, `view_file`, or subagent dispatch). Simulating fictional "Round 1, Round 2" text debates without tool data is an epistemic violation.
 2. **Fail-Closed Input Gate**: Invocation with an empty, missing, or vague proposal immediately halts with `INPUT_GATE_HALT`. The model never hallucinates arbitrary topics.
 3. **Decoupled Asymmetric Authority ($W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$)**:
+   - $W$ is **structural authority** (evidence-independence and clean context), **never** a measure of model or user competence.
    - The subagent's challenge lands at full strength ($S_{\text{LLM}}$).
    - The main model ($W=0.2$) is **physically prohibited** from overriding a subagent `REJECTED` verdict without an empirical counter-probe disproving the subagent's findings.
-4. **Token-Locked Handshake**: State transitions are locked to a one-time `dispatch_token` in `.grill-logic/state.json`. Unsigned commits fail closed.
-5. **Hard Gating**: If evidence refutes the proposal, `REJECTED` is committed to `LOGICAL_LEDGER.md` and code generation is **hard-blocked**.
+4. **Dynamic Skepticism Timing**: $S_{\text{LLM}}$ measures behavioral reaction to pushback (sycophancy, confirmation bias, fixed mental set). It **cannot be scored at Turn 0** before the target LLM has responded to a challenge.
+5. **Token-Locked Handshake**: State transitions are locked to a one-time `dispatch_token` in `.grill-logic/state.json`. Unsigned commits fail closed.
+6. **Hard Gating**: If evidence refutes the proposal, `REJECTED` is committed to `LOGICAL_LEDGER.md` and code generation is **hard-blocked**.
 
 ---
 
@@ -37,16 +39,22 @@ Self-Grill executes **State Machine 1 (Autonomous AI Iterative Self-Prompting)**
 2. Deconstruct Axioms (Stated vs. Hidden)
         │
         ▼
-3. Dispatch Ephemeral Subagent with Dispatch Token
+3. Round 1: Dispatch Ephemeral Subagent Challenger with Token
         │
         ▼
-4. Subagent Runs Real Tool Probe & Records Audit (S_LLM, Verdict, Rule)
+4. Subagent Executes Empirical Probe & Records Challenge
+   (--verdict CHALLENGE_ISSUED, S_LLM unassessed)
         │
         ▼
-5. Confrontation: Defend with Empirical Counter-Probe or Concede
+5. Round 2: Target LLM Confrontation
+   - Concede (--type concede) ──> REJECTED
+   - Counter-Hypothesis (--type counter) ──> Propose C' addressing empirical probe
         │
         ▼
-6. Subagent Sign-off (if SUPPORTED)
+6. Subagent Dynamic S_LLM Evaluation & Follow-up Probe
+   - Evaluates sycophancy, confirmation bias, fixed mental set on LLM response
+   - Probes C' for soundness
+   - Logs verdict: SUPPORTED (with signoff) or REJECTED
         │
         ▼
 7. Commit to LOGICAL_LEDGER.md & Gate Downstream Execution
@@ -66,7 +74,7 @@ Deconstruct the proposal into clean software engineering terms:
 - **Hidden Assumptions ($P_{\text{hidden}}$)**: Unspoken premises regarding concurrency, locking, network latency, or failure domains.
 - **Candidate Conclusion ($C$)**: The proposed architectural implementation.
 
-### Step 3: Dispatch Ephemeral Subagent
+### Step 3: Round 1 — Dispatch Ephemeral Subagent
 Spawn an isolated adversarial challenger via `invoke_subagent`:
 ```json
 {
@@ -74,22 +82,40 @@ Spawn an isolated adversarial challenger via `invoke_subagent`:
     "TypeName": "grill_logic_challenger",
     "Role": "Adversarial Epistemic Challenger",
     "Model": "inherit",
-    "Prompt": "AUDIT REQUEST: [proposal]\nDISPATCH TOKEN: [dispatch_token]\n\n1. Deconstruct premises and hidden assumptions.\n2. Apply DMAD strategies (backward refutation, empirical probing, premise inversion).\n3. Execute a real tool probe (grep_search, view_file, run_command, search_web) to test the weakest link.\n4. Log your audit directly: node scripts/grill-state.mjs record-subagent-audit --token [dispatch_token] --risk <LOW|MODERATE|HIGH> --syco <0.0-1.0> --conf <0.0-1.0> --fixed-set <true|false> --probe-tool <tool> --probe-finding \"<finding>\" --verdict <SUPPORTED|REJECTED> --rule \"<contrastive rule>\"\n5. If SUPPORTED, execute: node scripts/grill-state.mjs signoff-subagent --token [dispatch_token]\n6. Return your audit summary to parent."
+    "Prompt": "AUDIT REQUEST (Round 1): [proposal]\nDISPATCH TOKEN: [dispatch_token]\n\n1. Deconstruct premises and hidden assumptions.\n2. Apply DMAD strategies (backward refutation, empirical probing, premise inversion).\n3. Execute a real tool probe (grep_search, view_file, run_command, search_web) to test the weakest link.\n4. Log your challenge: node scripts/grill-state.mjs record-subagent-audit --token [dispatch_token] --probe-tool <tool> --probe-finding \"<empirical finding>\" --verdict CHALLENGE_ISSUED --rule \"<contrastive refutation rule>\"\n   (Note: S_LLM is left unassessed until the target LLM responds in Round 2).\n5. Return your challenge report to the parent agent."
   }]
 }
 ```
 **Turn Rule**: Do not generate evaluation text. Let the subagent execute.
 
-### Step 4: Evaluate Subagent Verdict
-When the subagent returns its message:
-- **If Subagent Verdict is `REJECTED`**:
-  - The main model cannot override $W_{\text{subagent}}$ with generative prose.
-  - If you believe the subagent is factually wrong, you MUST run an empirical tool probe disproving it and log it.
-  - Otherwise, you MUST accept the refutation.
-- **If Subagent Verdict is `SUPPORTED`**:
-  - Verify that `subagent_signoff` was recorded.
+### Step 4: Round 2 — Target LLM Confrontation
+When the subagent returns its challenge report and empirical finding:
+- Inspect the empirical finding and refutation.
+- **Option A (Concede)**: If the refutation is decisive and no viable counter-hypothesis exists:
+  ```bash
+  node scripts/grill-state.mjs record-llm-response --token [dispatch_token] --type concede --response "Conceded based on empirical finding: [Finding]"
+  ```
+- **Option B (Counter-Hypothesis $C'$)**: If the proposal can be refined into a minimal, empirically sound architecture resolving the bottleneck:
+  ```bash
+  node scripts/grill-state.mjs record-llm-response --token [dispatch_token] --type counter --response "Counter-Hypothesis C': [Refined architecture addressing empirical probe]"
+  ```
 
-### Step 5: Commit to Ledger & Gate Execution
+### Step 5: Round 2 Evaluation & Sign-off
+Dispatch or send a message to the subagent to evaluate the target LLM's response:
+- The subagent measures dynamic behavioral $S_{\text{LLM}}$:
+  - **Sycophancy (0.0–1.0)**: Did the LLM cave in without analyzing data, or constructively reason?
+  - **Confirmation Bias / Fixed Mental Set (0.0–1.0, bool)**: Did the LLM cling to the debunked premise?
+  - **Empirical Soundness of $C'$**: Runs follow-up tool probe if needed.
+- Subagent logs evaluated audit:
+  ```bash
+  node scripts/grill-state.mjs record-subagent-audit --token [dispatch_token] --risk <LOW|MODERATE|HIGH> --syco <0.0-1.0> --conf <0.0-1.0> --fixed-set <true|false> --probe-tool <tool> --probe-finding \"<probe on C'>\" --verdict <SUPPORTED|REJECTED> --rule \"<rule>\"
+  ```
+- If and only if verdict is `SUPPORTED`:
+  ```bash
+  node scripts/grill-state.mjs signoff-subagent --token [dispatch_token]
+  ```
+
+### Step 6: Commit to Ledger & Gate Execution
 Run the commit command:
 ```bash
 # If refuted:

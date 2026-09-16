@@ -156,6 +156,54 @@ const finalLedger = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
 assert(finalLedger.includes('**ARG-02**'), 'ARG-02 committed to ledger');
 assert(finalLedger.includes('Human HITL (W_human=1.0'), 'ARG-02 contains Human HITL metadata');
 
+// 6. Multi-Round Epistemic Flow Tests (CHALLENGE_ISSUED -> record-llm-response -> Evaluation -> Sign-off)
+console.log('\n6. Testing Multi-Round Epistemic Flow & Transition Guards...');
+
+// Initialize session
+const initMulti = runCmd('node scripts/grill-state.mjs init --machine autonomous --input "Client SQLite offline sync for 120k menu items"');
+assert(initMulti.code === 0, 'Multi-round autonomous proposal initialized');
+const multiState1 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+const mTok = multiState1.dispatch_token;
+
+// Round 1: Subagent records CHALLENGE_ISSUED
+const round1Challenge = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --risk HIGH --probe-tool run_command --probe-finding "Catalog size is 174MB, unfeasible for subway offline sync" --verdict CHALLENGE_ISSUED --rule "DO NOT sync 120k items locally"`);
+assert(round1Challenge.code === 0, 'Subagent records CHALLENGE_ISSUED');
+
+const multiState2 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(multiState2.current_state === 'AWAITING_LLM_RESPONSE', 'State transitioned to AWAITING_LLM_RESPONSE');
+assert(multiState2.epistemic_context.s_llm.sycophancy_score === null, 'S_LLM sycophancy is unassessed (null) at Round 1');
+
+// Guard: LLM cannot commit while challenge unaddressed
+const unaddressedCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED');
+assert(unaddressedCommit.code !== 0, 'Commit fails closed when challenge is unaddressed');
+assert(unaddressedCommit.stderr.includes('CHALLENGE_UNADDRESSED'), 'Emits CHALLENGE_UNADDRESSED diagnostic');
+
+// Round 2: LLM records counter-hypothesis
+const llmCounter = runCmd(`node scripts/grill-state.mjs record-llm-response --token ${mTok} --type counter --response "Persist draft cart locally and use idempotent HTTP retry queue with client UUID"`);
+assert(llmCounter.code === 0, 'Target LLM records counter-hypothesis');
+
+const multiState3 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(multiState3.current_state === 'AWAITING_SUBAGENT_EVAL', 'State transitioned to AWAITING_SUBAGENT_EVAL');
+assert(multiState3.llm_response.type === 'counter', 'LLM response type recorded as counter');
+
+// Guard: LLM cannot commit while evaluation is pending
+const pendingCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED');
+assert(pendingCommit.code !== 0, 'Commit fails closed when evaluation is pending');
+assert(pendingCommit.stderr.includes('EVALUATION_PENDING'), 'Emits EVALUATION_PENDING diagnostic');
+
+// Round 2 Evaluation: Subagent evaluates LLM counter-hypothesis, scores S_LLM, and signs off
+const subagentEval = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --risk LOW --syco 0.1 --conf 0.1 --fixed-set false --probe-tool view_file --probe-finding "AsyncStorage + Idempotency-Key header is sound and eliminates distributed database complexity" --verdict SUPPORTED --rule "Verified via empirical probe view_file"`);
+assert(subagentEval.code === 0, 'Subagent logs evaluated audit with low sycophancy and breaks fixed set');
+
+const subagentSignoff = runCmd(`node scripts/grill-state.mjs signoff-subagent --token ${mTok}`);
+assert(subagentSignoff.code === 0, 'Subagent executes signoff');
+
+const multiCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPORTED --rule "Client draft cart persistence with Idempotency-Key retry queue verified"');
+assert(multiCommit.code === 0, 'Commit succeeds as SUPPORTED after subagent sign-off');
+
+const multiLedger = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(multiLedger.includes('Client draft cart persistence'), 'Multi-round counter-hypothesis committed to ledger');
+
 // Cleanup
 runCmd('node scripts/clear-ledger.mjs --no-archive');
 
