@@ -301,6 +301,108 @@ assert(humanState.canonical_state === 'S_U4_EVAL_COUNTER', 'Canonical state tran
 assert(humanState.empirical_counter === true, 'empirical_counter recorded in state');
 assert(humanState.last_choice === 'Option 1 Minimal', 'last_choice recorded in state');
 
+// 8. Testing Prior Audit Remediations (Whitepaper v2.2.0 & Spec v1.1.0 Parity)
+console.log('\n8. Testing Prior Audit Remediations & Spec Parity...');
+
+// 8.1 Human HITL REJECTED blocked without empirical counter (Spec §4.3)
+runCmd('node scripts/clear-ledger.mjs --no-archive');
+runCmd('node scripts/grill-state.mjs init --machine human --input "Deploy GraphQL federation gateway"');
+runCmd('node scripts/grill-state.mjs record-user-turn --new-prop false --empirical-counter false');
+const unbackedReject = runCmd('node scripts/grill-state.mjs commit --status REJECTED --rule "Do not use GraphQL without empirical counter"');
+assert(unbackedReject.code !== 0, 'Human mode REJECTED without empirical counter fails closed');
+assert(unbackedReject.stderr.includes('EMPIRICAL_COUNTER_REQUIRED'), 'Emits EMPIRICAL_COUNTER_REQUIRED diagnostic');
+
+// 8.2 Human HITL REJECTED succeeds with empirical counter
+runCmd('node scripts/grill-state.mjs record-user-turn --new-prop true --empirical-counter true');
+const backedReject = runCmd('node scripts/grill-state.mjs commit --status REJECTED --rule "Do not infer GraphQL federation from microservices because N+1 query latency explodes. MANDATED ALTERNATIVE: REST gateway."');
+assert(backedReject.code === 0, 'Human mode REJECTED with empirical counter succeeds');
+
+const ledgerAfterBacked = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(ledgerAfterBacked.includes('**ARG-01**'), 'ARG-01 committed as REJECTED in ledger');
+
+// 8.3 In-place update handoff: add-logic -> init preserves arg_id
+runCmd('node scripts/clear-ledger.mjs --no-archive');
+runCmd('node scripts/grill-state.mjs add-logic --prompt "Migrate from REST to gRPC for inter-service RPC" --premises \'["Latency SLA under 5ms", "Protobuf is more compact than JSON"]\' --conclusion "Adopt gRPC for all internal RPCs"');
+
+const ledgerAfterAddLogic = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(ledgerAfterAddLogic.includes('**FORMULATED**'), 'Baseline registered as FORMULATED');
+assert(ledgerAfterAddLogic.includes('**ARG-01**'), 'Registered as ARG-01');
+
+// Now chain into init --machine autonomous
+const chainedInit = runCmd('node scripts/grill-state.mjs init --machine autonomous --input "Migrate from REST to gRPC for inter-service RPC"');
+assert(chainedInit.code === 0, 'Chained init succeeds');
+
+const chainedState = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(chainedState.arg_id === 'ARG-01', 'Chained init successfully preserved arg_id ARG-01');
+assert(chainedState.premises.length === 2, 'Chained init preserved formulated premises');
+
+// 8.4 signoff-subagent CLI command works with token handshake
+const chainedTok = chainedState.dispatch_token;
+
+// Record subagent probe in Round 1 and LLM counter in Round 2
+runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${chainedTok} --payload "{\\"conclusion_status\\":\\"CHALLENGED\\",\\"probe\\":{\\"tool\\":\\"run_command\\",\\"finding\\":\\"gRPC reduces serialization latency by 64%\\"}}"`);
+runCmd(`node scripts/grill-state.mjs record-llm-response --token ${chainedTok} --payload "{\\"type\\":\\"counter\\",\\"response\\":\\"Implement client connection pooling with HTTP/2 multiplexing\\"}"`);
+
+const badSignoff = runCmd('node scripts/grill-state.mjs signoff-subagent --token wrong_token');
+assert(badSignoff.code !== 0, 'signoff-subagent with wrong token fails closed');
+assert(badSignoff.stderr.includes('DISPATCH_TOKEN_MISMATCH'), 'Emits DISPATCH_TOKEN_MISMATCH diagnostic');
+
+const goodSignoff = runCmd(`node scripts/grill-state.mjs signoff-subagent --token ${chainedTok}`);
+assert(goodSignoff.code === 0, 'signoff-subagent with valid token succeeds');
+
+const stateAfterSignoff = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(stateAfterSignoff.subagent_signoff === true, 'subagent_signoff set to true by signoff-subagent');
+assert(stateAfterSignoff.current_state === 'SUBAGENT_SIGNED_OFF', 'State transitioned to SUBAGENT_SIGNED_OFF');
+
+// Commit in-place update for ARG-01
+const commitInPlace = runCmd('node scripts/grill-state.mjs commit --status ACCEPTED_SOLUTION --rule "gRPC adopted with HTTP/2 multiplexing"');
+assert(commitInPlace.code === 0, 'Commit in-place succeeds');
+
+const ledgerAfterInPlace = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(ledgerAfterInPlace.includes('**ARG-01**'), 'ARG-01 present in ledger');
+assert(!ledgerAfterInPlace.includes('**ARG-02**'), 'No duplicate ARG-02 appended; row was updated in-place');
+assert(ledgerAfterInPlace.includes('**ACCEPTED_SOLUTION**'), 'ARG-01 updated to ACCEPTED_SOLUTION');
+
+// 8.5 Formally invalid auto-refutation exemption from empirical probe in autonomous mode
+runCmd('node scripts/clear-ledger.mjs --no-archive');
+runCmd('node scripts/grill-state.mjs add-logic --prompt "Deploy SQLite with multi-writer containers over NFS" --premises \'["High concurrent write load", "Mount NFS storage volume"]\' --conclusion "Use SQLite over NFS"');
+
+// Validate with failing symbolic expression
+runCmd('node scripts/grill-state.mjs validate-nesy --payload "{\\"dependencies\\":[],\\"expressions\\":[{\\"left\\":\\"storage\\",\\"operator\\":\\"!=\\",\\"right\\":\\"nfs\\"}]}" --facts "{\\"storage\\":\\"nfs\\"}"');
+
+const stateInvalid = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(stateInvalid.validation.result === 'formally_invalid', 'Validation recorded formally_invalid');
+
+// Commit REJECTED directly without probe execution
+const autoRefuteCommit = runCmd('node scripts/grill-state.mjs commit --status REJECTED --rule "Do not infer SQLite over NFS from concurrent writes because POSIX fcntl byte-range locking fails. MANDATED ALTERNATIVE: PostgreSQL."');
+assert(autoRefuteCommit.code === 0, 'formally_invalid auto-refutation commit succeeds without empirical tool probe');
+
+const ledgerAfterRefute = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(ledgerAfterRefute.includes('Deterministic Solver**: Formally invalid'), 'Ledger records Deterministic Solver proof as evidence');
+
+// 8.6 Structural S_LLM parameter parsing and metric calculation
+runCmd('node scripts/clear-ledger.mjs --no-archive');
+runCmd('node scripts/grill-state.mjs init --machine autonomous --input "Test S_LLM metrics"');
+const sState = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+const sTok = sState.dispatch_token;
+
+// Round 1 challenge
+runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${sTok} --payload "{\\"conclusion_status\\":\\"CHALLENGED\\",\\"probe\\":{\\"tool\\":\\"view_file\\",\\"finding\\":\\"Initial probe finding\\"}}"`);
+
+// Round 2 LLM counter
+runCmd(`node scripts/grill-state.mjs record-llm-response --token ${sTok} --payload "{\\"type\\":\\"counter\\",\\"response\\":\\"Refined counter-hypothesis C\'\\"}"`);
+
+// Round 2 Subagent evaluation with structural S_LLM metrics
+const evalWithS = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${sTok} --unearned-concessions 1 --total-concessions 2 --unexamined-counter-evidence 0 --total-counter-evidence 3 --hypothesis-shifted true --payload "{\\"conclusion_status\\":\\"SUPPORTED\\",\\"probe\\":{\\"tool\\":\\"run_command\\",\\"finding\\":\\"Verified C\'\\"}}"`);
+assert(evalWithS.code === 0, 'record-subagent-audit with structural S_LLM parameters succeeds');
+
+const stateAfterEval = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(stateAfterEval.epistemic_context.s_llm !== null, 's_llm evaluated and populated in epistemic context');
+assert(stateAfterEval.epistemic_context.s_llm.s_syco === 0.5, 'S_syco calculated as 0.5 (1/2)');
+assert(stateAfterEval.epistemic_context.s_llm.s_conf === 0.0, 'S_conf calculated as 0.0 (0/3)');
+assert(stateAfterEval.epistemic_context.s_llm.f_einstellung === 0, 'F_einstellung is 0 (hypothesis shifted)');
+assert(stateAfterEval.epistemic_context.s_llm.risk_level === 'HIGH', 'Risk level is HIGH due to s_syco >= 0.5');
+
 // Cleanup
 runCmd('node scripts/clear-ledger.mjs --no-archive');
 

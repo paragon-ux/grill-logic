@@ -1,0 +1,6 @@
+interface:
+  display_name: "Add-Logic (Interpretation Gate)"
+  short_description: "Decomposes prompts into explicit premises and conclusion, confirming baseline verbatim before challenge."
+  default_prompt: "Deconstruct and formulate the baseline logic for this architectural proposal:"
+policy:
+  allow_implicit_invocation: false

@@ -310,19 +310,31 @@ export function cmdInit(args) {
   const isAutonomous = machine === 'AUTONOMOUS';
   const dispatchToken = isAutonomous ? generateToken('dmad_tok') : null;
 
+  const existingState = loadState();
+  const argId = getArgStr(args, 'arg-id') || existingState?.arg_id || null;
+  const validation = existingState?.validation || null;
+  const sourcePrompt = existingState?.source_prompt || input;
+  const premises = existingState?.premises || null;
+  const conclusion = existingState?.conclusion || null;
+
   const state = {
     version: '2.2.0',
+    arg_id: argId,
+    source_prompt: sourcePrompt,
+    premises,
+    conclusion,
+    validation,
     active_machine: isAutonomous ? 'AUTONOMOUS_DMAD' : 'HUMAN_HITL',
     current_state: isAutonomous ? 'AWAITING_SUBAGENT_DISPATCH' : 'IDENTIFY_BRANCHES',
     canonical_state: isAutonomous ? 'S_A1_TOKEN_ISSUE' : 'S_U1_PREMISE_ISOLATION',
     input_text: input,
-    tally: {
+    tally: existingState?.tally || {
       proposer: null,
       challenger: null,
       premises: { agree: 0, disagree: 0, uncertain: 0 },
       solution: { agree: 0, disagree: 0, uncertain: 0 }
     },
-    created_at: new Date().toISOString(),
+    created_at: existingState?.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
     turn_count: 0,
     dispatch_token: dispatchToken,
@@ -331,6 +343,7 @@ export function cmdInit(args) {
     epistemic_context: {
       target_w: isAutonomous ? 0.2 : 1.0,
       challenger_w: isAutonomous ? 0.8 : 0.4,
+      s_llm: null,
       s_human: {
         new_propositions_count: 0,
         reassertions_count: 0,
@@ -348,6 +361,9 @@ export function cmdInit(args) {
   saveState(state);
 
   console.log(`[GRILL-STATE] Initialized ${state.active_machine} session.`);
+  if (argId) {
+    console.log(`[GRILL-STATE] Preserved Baseline Argument ID: ${argId}`);
+  }
   console.log(`[GRILL-STATE] Current State: ${state.current_state}`);
   if (dispatchToken) {
     console.log(`[GRILL-STATE] Dispatch Token: ${dispatchToken}`);
@@ -423,6 +439,14 @@ export function cmdRecordSubagentAudit(args) {
   const probeTool = payload.probe?.tool || getArgStr(args, 'probe-tool');
   const probeFinding = payload.probe?.finding || getArgStr(args, 'probe-finding');
 
+  // Parse structural S_LLM metrics (Whitepaper §2.3)
+  const unearnedConcessions = payload.unearned_concessions ?? (args['unearned-concessions'] !== undefined ? parseInt(args['unearned-concessions'], 10) : null);
+  const totalConcessions = payload.total_concessions ?? (args['total-concessions'] !== undefined ? parseInt(args['total-concessions'], 10) : null);
+  const unexaminedCounter = payload.unexamined_counter_evidence ?? (args['unexamined-counter-evidence'] !== undefined ? parseInt(args['unexamined-counter-evidence'], 10) : null);
+  const totalCounter = payload.total_counter_evidence ?? (args['total-counter-evidence'] !== undefined ? parseInt(args['total-counter-evidence'], 10) : null);
+  const hypothesisShiftedRaw = payload.hypothesis_shifted ?? args['hypothesis-shifted'];
+  const hypothesisShifted = hypothesisShiftedRaw !== undefined ? String(hypothesisShiftedRaw).toLowerCase() === 'true' : null;
+
   // Enforce tool probe invariant: subagent must record a real tool execution
   if (!probeTool || !probeFinding) {
     emitDiagnostic({
@@ -495,6 +519,32 @@ export function cmdRecordSubagentAudit(args) {
       process.exit(1);
     }
   } else if (state.current_state === 'AWAITING_SUBAGENT_EVAL') {
+    // Evaluate structural S_LLM if parameters provided (Round 2)
+    if (unearnedConcessions !== null || totalConcessions !== null || unexaminedCounter !== null || totalCounter !== null || hypothesisShifted !== null) {
+      const sSyco = (totalConcessions && totalConcessions > 0) ? (Number(unearnedConcessions || 0) / totalConcessions) : 0.0;
+      const sConf = (totalCounter && totalCounter > 0) ? (Number(unexaminedCounter || 0) / totalCounter) : 0.0;
+      const fEinstellung = hypothesisShifted === false ? 1 : 0;
+      let risk = 'LOW';
+      if (fEinstellung === 1 || sSyco >= 0.5 || sConf >= 0.5) {
+        risk = 'HIGH';
+      } else if (sSyco > 0 || sConf > 0) {
+        risk = 'MODERATE';
+      }
+
+      state.epistemic_context.s_llm = {
+        s_syco: sSyco,
+        s_conf: sConf,
+        f_einstellung: fEinstellung,
+        risk_level: risk,
+        unearned_concessions: unearnedConcessions,
+        total_concessions: totalConcessions,
+        unexamined_counter_evidence: unexaminedCounter,
+        total_counter_evidence: totalCounter,
+        hypothesis_shifted: hypothesisShifted,
+        evaluated_at: new Date().toISOString()
+      };
+    }
+
     // Round 2 (Evaluation of Proposer's Synthesized C'):
     if (conclusionStatus === 'SUPPORTED') {
       state.current_state = 'SUBAGENT_SIGNED_OFF';
@@ -544,6 +594,10 @@ export function cmdRecordSubagentAudit(args) {
   console.log(`[GRILL-STATE] Subagent audit recorded successfully.`);
   console.log(`[GRILL-STATE] State: ${state.current_state} | Conclusion: ${state.conclusion_status} | Premise: ${state.premise_status} | Inference: ${state.inference_status}`);
   console.log(`[GRILL-STATE] Empirical Probe: [${probeTool}] ${probeFinding}`);
+  if (state.epistemic_context?.s_llm) {
+    const s = state.epistemic_context.s_llm;
+    console.log(`[GRILL-STATE] Evaluated S_LLM: Risk=${s.risk_level} | S_syco=${s.s_syco.toFixed(2)} | S_conf=${s.s_conf.toFixed(2)} | F_einstellung=${s.f_einstellung}`);
+  }
 }
 
 export function cmdRecordLlmResponse(args) {
@@ -746,11 +800,21 @@ export function cmdAddLogic(args) {
 
   let premises = [];
   if (premisesStr) {
+    let cleanPremisesStr = premisesStr.trim();
+    if ((cleanPremisesStr.startsWith("'") && cleanPremisesStr.endsWith("'")) ||
+        (cleanPremisesStr.startsWith('"') && cleanPremisesStr.endsWith('"') && cleanPremisesStr.includes('['))) {
+      cleanPremisesStr = cleanPremisesStr.slice(1, -1).trim();
+    }
     try {
-      premises = JSON.parse(premisesStr);
-      if (!Array.isArray(premises)) premises = [premisesStr];
+      premises = JSON.parse(cleanPremisesStr);
+      if (!Array.isArray(premises)) premises = [cleanPremisesStr];
     } catch {
-      premises = [premisesStr];
+      if (cleanPremisesStr.startsWith('[') && cleanPremisesStr.endsWith(']')) {
+        const inner = cleanPremisesStr.slice(1, -1).trim();
+        premises = inner.split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+      } else {
+        premises = [premisesStr];
+      }
     }
   } else {
     premises = [prompt];
@@ -965,6 +1029,68 @@ export function cmdRecordProceduralAdvance(args) {
   console.log(`[GRILL-STATE] Canonical State: S_A7_CONCORDANCE_SIGN_OFF. Challenger: UNOBJECTED (procedural clearance).`);
 }
 
+export function cmdSignoffSubagent(args) {
+  const state = loadState();
+  if (!state) {
+    emitDiagnostic({
+      code: 'NO_ACTIVE_SESSION',
+      reason: 'Attempted to sign off subagent without an active session.',
+      remediation: 'Initialize session first via `node scripts/grill-state.mjs init --machine autonomous ...`'
+    });
+    process.exit(1);
+  }
+
+  if (state.active_machine !== 'AUTONOMOUS_DMAD') {
+    emitDiagnostic({
+      code: 'INVALID_MACHINE_OPERATION',
+      machine: state.active_machine,
+      state: state.current_state,
+      reason: 'Subagent sign-off can only be recorded on AUTONOMOUS_DMAD machine.',
+      remediation: 'Subagent sign-off is only applicable in autonomous DMAD mode.'
+    });
+    process.exit(1);
+  }
+
+  const token = getArgStr(args, 'token');
+  if (state.dispatch_token && (!token || token !== state.dispatch_token)) {
+    emitDiagnostic({
+      code: 'DISPATCH_TOKEN_MISMATCH',
+      machine: state.active_machine,
+      state: state.current_state,
+      targetW: state.epistemic_context.target_w,
+      challengerW: state.epistemic_context.challenger_w,
+      reason: `Subagent sign-off submitted with invalid or mismatched dispatch token: '${token}'. Expected: '${state.dispatch_token}'.`,
+      remediation: 'Provide matching session dispatch token.'
+    });
+    process.exit(1);
+  }
+
+  if (state.conclusion_status === 'REJECTED') {
+    emitDiagnostic({
+      code: 'EMPIRICAL_COUNTER_ACTIVE',
+      machine: state.active_machine,
+      state: state.current_state,
+      reason: 'Cannot sign off subagent while an active REJECTED status remains in state.',
+      remediation: 'Subagent must evaluate synthesized C\' as SUPPORTED before signing off.'
+    });
+    process.exit(1);
+  }
+
+  state.subagent_signoff = true;
+  state.current_state = 'SUBAGENT_SIGNED_OFF';
+  state.canonical_state = 'S_A7_CONCORDANCE_SIGN_OFF';
+  state.conclusion_status = 'SUPPORTED';
+  state.tally = state.tally || { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } };
+  state.tally.proposer = 'AGREE';
+  state.tally.challenger = 'AGREE';
+  state.tally.solution = { agree: 2, disagree: 0, uncertain: 0 };
+  state.updated_at = new Date().toISOString();
+
+  saveState(state);
+  console.log('[GRILL-STATE] Subagent sign-off recorded successfully.');
+  console.log('[GRILL-STATE] State: SUBAGENT_SIGNED_OFF | Canonical State: S_A7_CONCORDANCE_SIGN_OFF');
+}
+
 export function cmdCheckGate(args) {
   const proposal = getArgStr(args, 'proposal');
   if (!proposal) {
@@ -1047,7 +1173,8 @@ export function cmdCommit(args) {
       process.exit(1);
     }
 
-    if (!state.probes_executed || state.probes_executed.length === 0) {
+    const isFormallyInvalid = state.validation?.result === 'formally_invalid';
+    if ((!state.probes_executed || state.probes_executed.length === 0) && !(status === 'REJECTED' && isFormallyInvalid)) {
       emitDiagnostic({
         code: 'EMPIRICAL_PROBE_MISSING',
         machine: state.active_machine,
@@ -1094,6 +1221,20 @@ export function cmdCommit(args) {
       });
       process.exit(1);
     }
+
+    // Empirical-Counter Guard: Human mode REJECTED requires an empirical counter or formal solver proof (Spec §4.3)
+    if (status === 'REJECTED' && !state.empirical_counter && state.validation?.result !== 'formally_invalid') {
+      emitDiagnostic({
+        code: 'EMPIRICAL_COUNTER_REQUIRED',
+        machine: state.active_machine,
+        state: state.current_state,
+        targetW: state.epistemic_context?.target_w,
+        challengerW: state.epistemic_context?.challenger_w,
+        reason: 'Cannot commit REJECTED in Human HITL mode without an empirical counter or formal invalidity proof (Spec §4.3).',
+        remediation: 'Record an empirical counter via `record-user-turn --empirical-counter true` or run formal validation.'
+      });
+      process.exit(1);
+    }
   }
 
   // Ledger Formatting & Commitment
@@ -1123,9 +1264,12 @@ export function cmdCommit(args) {
   const conclusionText = state.conclusion || (isAuto ? 'Implement proposal' : 'Aligned architecture');
   const cleanConclusion = conclusionText.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
-  const auditEvidence = isAuto
-    ? `**Subagent Challenger (W_subagent=0.8)**: ${probeSummary || 'Standard evaluation'}`
-    : `**Human HITL (W_human=1.0)**: Decision tree aligned`;
+  const isFormallyInvalid = state.validation?.result === 'formally_invalid';
+  const auditEvidence = isFormallyInvalid && (!state.probes_executed || state.probes_executed.length === 0)
+    ? `**Deterministic Solver**: Formally invalid (${state.validation?.notes || 'Invariant failed'})`
+    : (isAuto
+        ? `**Subagent Challenger (W_subagent=0.8)**: ${probeSummary || 'Standard evaluation'}`
+        : `**Human HITL (W_human=1.0)**: Decision tree aligned`);
 
   let statusDisplay = `**${status}**`;
   if (status === 'REJECTED') {
@@ -1174,11 +1318,45 @@ function parseArgs(args) {
   for (let i = 0; i < args.length; i++) {
     if (args[i].startsWith('--')) {
       const key = args[i].slice(2);
-      parsed[key] = (i + 1 < args.length && !args[i + 1].startsWith('--')) ? String(args[++i]) : true;
+      if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+        let val = String(args[++i]);
+        // Handle shells (like Windows cmd.exe) that do not preserve single quotes or split JSON on spaces
+        const needsJoin = (
+          (val.startsWith("'") && !val.endsWith("'")) ||
+          (val.startsWith('"') && !val.endsWith('"')) ||
+          (val.startsWith('[') && !val.endsWith(']')) ||
+          (val.startsWith('{') && !val.endsWith('}')) ||
+          (val.startsWith("'[") && !val.endsWith("]'")) ||
+          (val.startsWith("'{") && !val.endsWith("}'")) ||
+          (val.startsWith('"[') && !val.endsWith(']"')) ||
+          (val.startsWith('"{') && !val.endsWith('}"'))
+        );
+        if (needsJoin) {
+          while (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+            val += ' ' + args[++i];
+            if (
+              (val.startsWith("'") && val.endsWith("'")) ||
+              (val.startsWith('"') && val.endsWith('"')) ||
+              (val.startsWith('[') && val.endsWith(']')) ||
+              (val.startsWith('{') && val.endsWith('}')) ||
+              (val.startsWith("'[") && val.endsWith("]'")) ||
+              (val.startsWith("'{") && val.endsWith("}'")) ||
+              (val.startsWith('"[') && val.endsWith(']"')) ||
+              (val.startsWith('"{') && val.endsWith('}"'))
+            ) {
+              break;
+            }
+          }
+        }
+        parsed[key] = val;
+      } else {
+        parsed[key] = true;
+      }
     }
   }
   return parsed;
 }
+
 
 const isMain = process.argv[1] && (
   process.argv[1].endsWith('grill-state.mjs') || 
@@ -1217,6 +1395,9 @@ if (isMain) {
   case 'record-diagnostic-ack':
     cmdRecordDiagnosticAck();
     break;
+  case 'signoff-subagent':
+    cmdSignoffSubagent(parsedArgs);
+    break;
   case 'check-gate':
   case 'solve-bounds':
     cmdCheckGate(parsedArgs);
@@ -1235,6 +1416,7 @@ if (isMain) {
   record-llm-response        --token <tok> --payload '<JSON>'
   record-user-turn           --new-prop <true|false> [--choice "<text>"]
   record-diagnostic-ack
+  signoff-subagent           --token <tok>
   check-gate                 --proposal "<text>"
   commit                     --status <SUPPORTED|REJECTED|ACCEPTED_SOLUTION> [--rule "<rule>"]
 `);
