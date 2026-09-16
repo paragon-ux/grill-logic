@@ -50,6 +50,12 @@ When operating as an AI agent in this environment, adhere to the truth-maintenan
   - Tracks behavioral $S_{\text{human}}$. If stagnant turns $\ge 3$, raises `HUMAN_STAGNATION_ALERT` requiring diagnostic query acknowledgment.
   - Logs confirmed invariants into `LOGICAL_LEDGER.md` as `SUPPORTED`.
 
+### D. Mandatory Operational Release Gate (ADR-0001)
+* **Live In-Thread Verification**: Before any release, version tag, or deployment, the agent must execute live stochastic trials of `/self-grill` directly in the conversation thread.
+* **No Pre-Scripted Archetypes**: Proposals must be generated stochastically on the fly to prevent model memorization or benchmark leakage.
+* **Empirical Execution Contract**: Each trial must spawn a live `grill_logic_challenger` subagent via `invoke_subagent`, verify real tool probe executions, authenticate the session `dispatch_token`, and enforce asymmetric authority ($W_{\text{LLM}}=0.2$ cannot override $W_{\text{subagent}}=0.8$).
+* **Universal Epistemic Proxy**: Successful completion of autonomous live trials serves as the operational proxy for both `/self-grill` and `/grill-logic` state machines.
+
 ---
 
 ## 3. Communication Protocol

@@ -55,3 +55,14 @@ Whenever an invariant is violated, a probe is omitted, or an active `REJECTED` r
 1. The engine **fails closed immediately** with exit code 1 or 2.
 2. The state is marked `EXECUTION_BLOCKED`.
 3. Procedural code generation is **hard-blocked**. Silent pass-throughs are strictly prohibited.
+
+---
+
+## Release Gate Protocol (ADR-0001)
+
+Before cutting any release, tagging a new version, or publishing changes:
+1. All static unit and schema tests must pass (`npm test`).
+2. The AI agent must execute live stochastic `/self-grill` trials directly in the conversation thread.
+3. Proposals must be stochastically synthesized on the fly (no fixed templates or static corpora).
+4. Subagents must be invoked live, proving empirical tool probing, token-locked state logging, and asymmetric authority enforcement.
+
