@@ -56,6 +56,14 @@ When operating as an AI agent in this environment, adhere to the truth-maintenan
 * **Empirical Execution Contract**: Each trial must spawn a live `grill_logic_challenger` subagent via `invoke_subagent`, verify real tool probe executions, authenticate the session `dispatch_token`, and enforce asymmetric authority ($W_{\text{LLM}}=0.2$ cannot override $W_{\text{subagent}}=0.8$).
 * **Universal Epistemic Proxy**: Successful completion of autonomous live trials serves as the operational proxy for both `/self-grill` and `/grill-logic` state machines.
 
+### E. Asymmetric CoT & Frontier-Depletion Closure (ADR-0002)
+* **Asymmetric CoT Topologies**: To prevent correlated errors across homogeneous LLM agents (Amazon Science findings), agents execute orthogonal reasoning paths:
+  - *Challenger CoT*: Backward Inversion / Refutation ($C \implies \neg P$) with 0% solutions in Round 1.
+  - *Proposer CoT*: Forward Constraint-Satisfaction Synthesis ($(P + \text{Bounds}) \implies C'$).
+* **Strict 90/10 Invariant**: Round 1 challenger must NEVER offer solutions or recommendations (`➡️`). Solutions are strictly gated until concordance (State `S_A7` / `S_U7`).
+* **Frontier-Depletion Closure**: Debates terminate when the epistemic frontier of unexamined contradictions and untested assumptions is empty ($\mathcal{F} = \emptyset$). Max 2 autonomous rounds before mandatory human escalation ($W_{\text{human}}=1.0$).
+* **Structural Impossibility Over Pseudo-Math**: Rejects continuous float formulas ($\mathcal{E} = W \cdot (1 - S)$) or RRF rankings. Safety is enforced mechanically via deterministic state transition barriers, token locks, and fail-closed exit codes.
+
 ---
 
 ## 3. Communication Protocol

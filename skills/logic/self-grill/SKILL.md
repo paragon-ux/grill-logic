@@ -24,6 +24,8 @@ Self-Grill executes **State Machine 1 (Autonomous AI Iterative Self-Prompting)**
 4. **Dynamic Skepticism Timing**: $S_{\text{LLM}}$ measures behavioral reaction to pushback (sycophancy, confirmation bias, fixed mental set). It **cannot be scored at Turn 0** before the target LLM has responded to a challenge.
 5. **Token-Locked Handshake**: State transitions are locked to a one-time `dispatch_token` in `.grill-logic/state.json`. Unsigned commits fail closed.
 6. **Hard Gating**: If evidence refutes the proposal, `REJECTED` is committed to `LOGICAL_LEDGER.md` and code generation is **hard-blocked**.
+7. **Strict 90/10 Invariant & Asymmetric CoT (ADR-0002)**: The challenger executes Backward Inversion CoT ($C \implies \neg P$) and is strictly forbidden from proposing solutions or recommendations in Round 1 (0% solution). The proposer executes Forward Synthesis CoT ($(P + \text{Bounds}) \implies C'$).
+8. **Frontier-Depletion Closure (ADR-0002)**: Verification terminates when the epistemic frontier of unaddressed contradictions is depleted ($\mathcal{F} = \emptyset$). Max 2 autonomous rounds before mandatory escalation to the human sovereign ($W_{\text{human}}=1.0$).
 
 ---
 
@@ -102,13 +104,19 @@ When the subagent returns its challenge report and empirical finding:
 
 ### Step 5: Round 2 Evaluation & Sign-off
 Dispatch or send a message to the subagent to evaluate the target LLM's response:
-- The subagent measures dynamic behavioral $S_{\text{LLM}}$:
-  - **Sycophancy (0.0–1.0)**: Did the LLM cave in without analyzing data, or constructively reason?
-  - **Confirmation Bias / Fixed Mental Set (0.0–1.0, bool)**: Did the LLM cling to the debunked premise?
+- The subagent evaluates structural metrics deterministically (no arbitrary floating-point guesses):
+  - **Sycophancy ($S_{\text{syco}}$)**: $N_{\text{unearned}} / N_{\text{total\_concessions}}$ (0.0 if concessions were backed by empirical evidence).
+  - **Confirmation Bias ($S_{\text{conf}}$)**: $E_{\text{unexamined}} / E_{\text{total\_counter}}$ (0.0 if all probe findings were addressed in $C'$).
+  - **Fixed Mental Set**: True if LLM repeated refuted conclusion; False if hypothesis class shifted ($C' \neq C$).
   - **Empirical Soundness of $C'$**: Runs follow-up tool probe if needed.
-- Subagent logs evaluated audit:
+- Subagent logs evaluated audit using deterministic structural arguments:
   ```bash
-  node scripts/grill-state.mjs record-subagent-audit --token [dispatch_token] --risk <LOW|MODERATE|HIGH> --syco <0.0-1.0> --conf <0.0-1.0> --fixed-set <true|false> --probe-tool <tool> --probe-finding \"<probe on C'>\" --verdict <SUPPORTED|REJECTED> --rule \"<rule>\"
+  node scripts/grill-state.mjs record-subagent-audit --token [dispatch_token] \
+    --unearned-concessions <N> --total-concessions <N> \
+    --unexamined-counter-evidence <N> --total-counter-evidence <N> \
+    --hypothesis-shifted <true|false> \
+    --probe-tool <tool> --probe-finding "<probe on C'>" \
+    --verdict <SUPPORTED|REJECTED> --rule "<rule>"
   ```
 - If and only if verdict is `SUPPORTED`:
   ```bash

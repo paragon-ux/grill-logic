@@ -66,3 +66,12 @@ Before cutting any release, tagging a new version, or publishing changes:
 3. Proposals must be stochastically synthesized on the fly (no fixed templates or static corpora).
 4. Subagents must be invoked live, proving empirical tool probing, token-locked state logging, and asymmetric authority enforcement.
 
+---
+
+## Asymmetric CoT & Frontier-Depletion Closure (ADR-0002)
+
+* **Decorrelated Reasoning**: Challenger executes Backward Inversion CoT ($C \implies \neg P$); Proposer executes Forward Synthesis CoT ($(P + \text{Bounds}) \implies C'$). Prevents correlated errors (Amazon Science findings).
+* **Strict 90/10 Invariant**: Challenger must NEVER offer solutions or recommendations in Round 1. Solutions unlocked only after concordance.
+* **Frontier-Depletion Closure**: Terminate when the epistemic frontier of unaddressed contradictions is empty ($\mathcal{F} = \emptyset$). Max 2 autonomous rounds before human escalation ($W_{\text{human}}=1.0$).
+* **Structural Impossibility**: No fake math or continuous float scoring. Gates are enforced by deterministic state machines, exit codes, and token handshakes.
+

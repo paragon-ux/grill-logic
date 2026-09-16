@@ -191,9 +191,15 @@ const pendingCommit = runCmd('node scripts/grill-state.mjs commit --status SUPPO
 assert(pendingCommit.code !== 0, 'Commit fails closed when evaluation is pending');
 assert(pendingCommit.stderr.includes('EVALUATION_PENDING'), 'Emits EVALUATION_PENDING diagnostic');
 
-// Round 2 Evaluation: Subagent evaluates LLM counter-hypothesis, scores S_LLM, and signs off
-const subagentEval = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --risk LOW --syco 0.1 --conf 0.1 --fixed-set false --probe-tool view_file --probe-finding "AsyncStorage + Idempotency-Key header is sound and eliminates distributed database complexity" --verdict SUPPORTED --rule "Verified via empirical probe view_file"`);
-assert(subagentEval.code === 0, 'Subagent logs evaluated audit with low sycophancy and breaks fixed set');
+// Round 2 Evaluation: Subagent evaluates LLM counter-hypothesis using deterministic structural counts
+const subagentEval = runCmd(`node scripts/grill-state.mjs record-subagent-audit --token ${mTok} --unearned-concessions 0 --total-concessions 1 --unexamined-counter-evidence 0 --total-counter-evidence 3 --hypothesis-shifted true --probe-tool view_file --probe-finding "AsyncStorage + Idempotency-Key header is sound and eliminates distributed database complexity" --verdict SUPPORTED --rule "Verified via empirical probe view_file"`);
+assert(subagentEval.code === 0, 'Subagent logs evaluated audit using deterministic structural counts');
+
+const multiState4 = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(multiState4.epistemic_context.s_llm.sycophancy_score === 0, 'S_LLM sycophancy is deterministically calculated as 0.0 (0 unearned / 1 concession)');
+assert(multiState4.epistemic_context.s_llm.confirmation_bias_score === 0, 'S_LLM confirmation bias is deterministically calculated as 0.0 (0 unexamined / 3 counter-evidence)');
+assert(multiState4.epistemic_context.s_llm.fixed_mental_set === false, 'Fixed mental set is false (hypothesis shifted from original conclusion)');
+assert(multiState4.epistemic_context.s_llm.risk_level === 'LOW', 'Risk level is deterministically computed as LOW');
 
 const subagentSignoff = runCmd(`node scripts/grill-state.mjs signoff-subagent --token ${mTok}`);
 assert(subagentSignoff.code === 0, 'Subagent executes signoff');
