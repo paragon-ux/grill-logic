@@ -24,7 +24,7 @@
     "truth-maintenance"
   ],
   "scripts": {
-    "test": "node scripts/test-skills.mjs && node scripts/test-ledger.mjs && node scripts/test-v2-protocol.mjs",
+    "test": "node scripts/test-skills.mjs && node scripts/test-ledger.mjs && node scripts/test-v2-protocol.mjs && node scripts/test-epistemic-engine.mjs",
     "clear-ledger": "node scripts/clear-ledger.mjs"
   }
 }

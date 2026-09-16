@@ -6,7 +6,7 @@ Developing real software with AI coding agents is hard. Standard workflows (GSD,
 
 When a user prompt or agent proposal contains an unstated, false assumption (e.g., assuming SQLite WAL mode works safely over NFS, or that database read latency requires an external caching cluster), procedural planners will happily generate 1,000 lines of pristine, well-structured code around a fundamentally broken premise. Both user and agent sign off because the steps look sensible, even though the foundational axiom is physically or logically invalid.
 
-**Grill-Logic** cleanly separates the **Epistemic Layer (Truth Maintenance)** from the **Procedural Layer (Task Execution)**. It extracts the argument into Standard Logical Form ($P \vdash C$), stress-tests the inferential bridge with an actor-agnostic challenge, and maintains a persistent truth ledger with runtime negative constraints.
+**Grill-Logic** cleanly separates the **Epistemic Layer (Truth Maintenance)** from the **Procedural Layer (Task Execution)**. It provides two dedicated, tool-driven state machines with mathematical Autonomy Weight ($W$), Skepticism Signals ($S$), and fail-closed runtime negative constraints.
 
 ---
 
@@ -42,85 +42,50 @@ The prompt-driven setup skill will:
 
 ### 3. Bam. Ready to roll.
 
-State your architectural ideas or let the continuous gate protect your sessions automatically.
+Run `/self-grill` for autonomous audits or `/grill-logic` for interactive design alignment.
 
 ---
 
-## Multi-Round vs. Multi-Turn: The Distinction
+## The Two Dedicated State Machines
 
-Grill-Logic enforces a rigorous architectural separation between conversational turns and adversarial debate rounds:
-
-* **Multi-Turn (Session Lifecycle)**: The ongoing conversation across multiple user prompts and days of development. Guarded continuously by `LOGICAL_LEDGER.md` and `.agents/rules/epistemic-gate.md`. When a premise is rejected in Turn 2, its **Contrastive Refutation Rule** remains active in Turn 20, guaranteeing the model never suffers from semantic attraction or hallucinates the same flawed design again.
-* **Multi-Round (Recursive Epistemic Challenge)**: The iterative, adversarial challenge rounds executed **within a single verification audit**:
-  * **Round 1 (Attack the Bridge)**: Deconstructs the proposal into Standard Logical Form ($P \vdash C$) and attacks the inferential bridge ($\vdash$). Does $P$ necessitate $C$, or does a simpler $C'$ solve it without operational bloat?
-  * **Round 2 (Stress-Test the Alternative)**: If the challenger proposes a counter-hypothesis ($C'$), Round 2 isolates the premises of $C'$ ($P_{C'} \vdash C'$) to ensure the alternative does not introduce hidden failure modes.
-  * **Round $k$**: Continues until the epistemic frontier converges on a verified, supported conclusion.
-
----
-
-## Why Grill-Logic Exists
-
-### Failure Mode #1: The Agent Built on a False Premise
-* **The Problem**: You ask an agent to optimize a database lookup. It immediately drafts a 10-step plan to deploy Redis, refactor data access objects, and build cache invalidation hooks. The real issue was an unindexed sequential table scan that a 1-line composite index solves in 2 milliseconds.
-* **The Grill-Logic Fix**: Extracts the explicit conditions and candidate action into Standard Form ($P_1..P_n \vdash C$), exposes the inferential turnstile ($\vdash$), and asks: *Does high read latency necessitate an external caching cluster?*
-
-### Failure Mode #2: Multi-Agent Debate is Theater
-* **The Problem**: Early agent frameworks spawned swarms of multi-persona agents to debate solutions, causing massive token burn, high latency, and sycophantic consensus without catching factual bugs.
-* **The Grill-Logic Fix**: De-escalates debate theater to a fast **actor-agnostic challenge** routed to the quickest available falsifier:
-  1. *Deterministic Sandbox Probe*: A 5-line compiler check, CLI command, or documentation search.
-  2. *Internal Adversarial CoT*: Rapid counter-hypothesis pass in extended thinking tokens.
-  3. *Human Arbitration*: An ergonomic multiple-choice question when business intent requires human judgment.
-
-### Failure Mode #3: Hallucinations Resurrect in Later Turns
-* **The Problem**: In a multi-turn conversation, you reject an invalid proposal in Turn 2. By Turn 6, the model suffers from *semantic attraction* and proposes the exact same flawed pattern again.
-* **The Grill-Logic Fix (Contrastive Constraints)**: When an argument is rejected, Grill-Logic records an explicit **Contrastive Refutation Rule** in [`LOGICAL_LEDGER.md`](LOGICAL_LEDGER.md). This acts as a persistent negative constraint firewall that hard-blocks regression in subsequent turns.
-
----
-
-## Natural Language Invocation (No Quotes, No CLI Flags)
-
-Grill-Logic is a skill, not a CLI utility. **Prompts do not require quotation marks or synthetic flags.** The skill infers mode and depth directly from conversational phrasing:
-
-```bash
-# Default invocation: Fastest-falsifier heuristic, until settled
-/grill-logic migrate session tokens to redis cluster
-
-# Autonomous self-grill (AFK): Agent stresses its own proposal via internal CoT & probes
-/grill-logic self-grill: refactor query pipeline to use raw sockets
-
-# Interactive human interview (HITL): Formulates multiple-choice questions for the user
-/grill-logic interview me on adopting GraphQL for our mobile backend
-
-# Deterministic probe: Enforces empirical tool/compiler verification
-/grill-logic check in sandbox if jemalloc builds with MSVC
-
-# Recursive multi-round depth: Challenges the counter-hypotheses across multiple rounds
-/grill-logic deep dive 2 rounds: decompose monolith into 6 microservices
+```
+                                  [User Request]
+                                         │
+                   ┌─────────────────────┴─────────────────────┐
+                   ▼                                           ▼
+      [State Machine 1: Autonomous]               [State Machine 2: Human]
+      (DMAD Self-Iterative Loop)                 (Sequential Turn-by-Turn)
+      • Command: `/self-grill [proposal]`        • Command: `/grill-logic [topic]`
+      • Target: LLM / Proposed Architecture      • Target: Human Decision Tree
+      • Target Autonomy: W_LLM = 0.2 (Low)       • Target Autonomy: W_human = 1.0 (High)
+      • Skepticism: S_LLM lands at FULL STRENGTH • Skepticism: S_human is DAMPENED
+      • Driven by real tool probes               • Driven by `ask_question` tool
+      • Dispatch Token Handshake                 • Strict Turn Yield on Question
+      • State: `.grill-logic/state.json`         • State: `.grill-logic/state.json`
+      • Fail-Closed: Blocks on any error         • Fail-Closed: Blocks on any error
 ```
 
+### 1. State Machine 1: Autonomous DMAD Engine (`/self-grill`)
+* **Trigger**: `/self-grill [proposal]` or `self-grill:` or `autonomous:`
+* **Execution**: Hands-free / AFK loop driven strictly by **real empirical tool probes** (`grep_search`, `run_command`, `view_file`, or subagent). Zero simulated text monologues.
+* **Token Handshake**: The subagent logs its audit directly into `.grill-logic/state.json` using a one-time session `dispatch_token`.
+* **Asymmetric $W$ Guard**: $W_{\text{LLM}} = 0.2$ is physically blocked from overriding $W_{\text{subagent}} = 0.8$ rejection without an empirical counter-probe.
+
+### 2. State Machine 2: Human Sequential Interview (`/grill-logic`)
+* **Trigger**: `/grill-logic [topic]` or `interview me on [topic]`
+* **Execution**: Walks down an architectural decision tree one branch at a time.
+* **Strict Turn Yield**: Ingests topic $\to$ formulates single decision $\to$ calls `ask_question` tool $\to$ **YIELDS TURN IMMEDIATELY**. The model is physically prohibited from answering for the user.
+* **Behavioral Stagnation Tracking ($S_{\text{human}}$)**: Every turn logs whether user introduced new propositions. If $C_{\text{stagnant}} \ge 3$, raises `HUMAN_STAGNATION_ALERT` requiring diagnostic acknowledgment.
+* **Permanent Invariants**: Confirmed decisions are logged into `LOGICAL_LEDGER.md` as `SUPPORTED`.
+
 ---
 
-## Continuous Hook Infrastructure (Hands-Free Multi-Turn)
+## Fail-Closed Error Architecture
 
-Typing `/grill-logic` on every prompt in a long conversation is a burden. Grill-Logic provides an abstract, harness-agnostic hook architecture that automatically triggers pre-flight premise verification whenever an architectural or dependency change is proposed:
-
-1. **Always-On Epistemic Rule ([`.agents/rules/epistemic-gate.md`](.agents/rules/epistemic-gate.md))**:
-   Zero-script continuous rule active across Antigravity, Claude Code, Cursor, and Codex. Detects architectural assertions, checks [`LOGICAL_LEDGER.md`](LOGICAL_LEDGER.md) for active negative constraints, and stress-tests premises before code generation begins.
-2. **Agent Lifecycle Hook Architecture ([`references/hooks-setup-guide.md`](references/hooks-setup-guide.md))**:
-   Abstract operational guide defining the prompt-interception lifecycle, assertion analysis patterns, and fail-open guarantees for non-Git agent hooks across any custom harness.
-
----
-
-## Empirical Scoreboard (Subagent Verification)
-
-Grill-Logic was rigorously dogfooded against common architectural failure modes using autonomous subagents (full audit traces and reference cases documented in [`references/examples.md`](references/examples.md)):
-
-| Proposal | Auditor Finding | Verdict | Contrastive Rule Enforced |
-| :--- | :--- | :--- | :--- |
-| **SQLite WAL over NFS in Kubernetes** | SQLite WAL requires host-local POSIX shared memory (`-shm`); NFS cannot synchronize across kernels and corrupts B-trees. | **BLOCKED** | Do not infer shared embedded file-based storage from multi-node environments. |
-| **600ms Postgres latency $\implies$ Redis cluster** | Point lookup latency caused by unindexed sequential table scan; caching masks root cause and causes stampedes. | **BLOCKED** | Do not infer caching layer from read latency without profiling query plans (`EXPLAIN ANALYZE`). |
-| **Windows C++ server $\implies$ Linux `io_uring`** | Windows NT kernel cannot execute `io_uring`; WSL2 virtualization destroys zero-copy DMA semantics. | **BLOCKED** | Do not adopt Linux kernel interfaces on Windows; use Winsock RIO or IOCP. |
-| **Monolith $\implies$ 6 microservices (2 Rounds)** | Conway's Law violation (0.5 devs/service); batching causes release friction. Counter-hypothesis (Trunk-Based CD) verified. | **PASS ($C'$)** | Do not infer microservices from release friction on small teams; adopt Trunk-Based CD. |
+If an invariant is violated, an empirical probe is omitted, a token is mismatched, or a proposal matches an active `REJECTED` rule:
+1. The engine (`scripts/grill-state.mjs`) **fails closed immediately** with a non-zero exit code.
+2. The state is marked `EXECUTION_BLOCKED`.
+3. Procedural code generation is **hard-blocked**. Silent pass-throughs are strictly prohibited.
 
 ---
 
@@ -130,16 +95,25 @@ Grill-Logic was rigorously dogfooded against common architectural failure modes 
 grill-logic/
 ├── .agents/
 │   ├── rules/
-│   │   └── epistemic-gate.md    # Always-on continuous hook rule for multi-turn conversations
+│   │   └── epistemic-gate.md    # Always-on continuous hook rule for multi-turn sessions
 │   └── skills/                  # Mirrored skill tree for Antigravity discovery
+│       └── logic/
+│           ├── grill-logic/     # Human HITL Sequential Interview Engine
+│           └── self-grill/      # Autonomous DMAD Epistemic Engine
+├── core/
+├── scripts/
+│   ├── clear-ledger.mjs         # Automated ledger reset and archiving tool
+│   └── grill-state.mjs          # Standalone epistemic state engine & fail-closed runtime
 ├── skills/
 │   ├── logic/
-│   │   ├── grill-logic/         # User front door (compact ~40-line invocation interface)
-│   │   └── epistemic-verifier/  # Core truth engine (multi-round epistemic verification)
+│   │   ├── grill-logic/         # Human HITL Sequential Interview Engine
+│   │   └── self-grill/          # Autonomous DMAD Epistemic Engine
 │   └── setup/
-│       ├── clear-ledger/        # Automated ledger reset and archiving tool
+│       ├── clear-ledger/        # Automated ledger reset skill (/clear-ledger)
 │       └── setup-grill-logic/   # Prompt-driven automated repository configurer
 ├── references/
+│   ├── grill-logic-whitepaper.md # Canonical architectural & theoretical whitepaper
+│   ├── build-requirements.md   # System specifications and acceptance criteria
 │   ├── hooks-setup-guide.md    # Abstract agent lifecycle hook architecture guide
 │   ├── logical-ledger-spec.md  # Registry format, transitions, and contrastive rule conventions
 │   └── examples.md             # Concrete case studies (caching leaps, auth invariants, DB sync)
@@ -161,16 +135,3 @@ Grill-Logic synthesizes breakthroughs across cognitive science, multi-agent deba
 * **Autonomy Weight ($W$) & Skepticism Signal ($S$)**: Decouples challenger-credibility from target-deference ($W_{\text{subagent}} > W_{\text{LLM}}$), applying $S_{\text{LLM}}$ at full strength against the main model while preserving sovereign developer authority ($W_{\text{human}}$).
 * **The 90/10 Invariant**: Gating solution generation until after premise concordance is reached, preventing premature solution offering.
 * **Contrastive Chain of Thought (CCoT)**: Inspires our runtime negative constraint firewall in `LOGICAL_LEDGER.md`, turning refuted architectures into permanent refutation rules that block semantic regression across turns.
-
----
-
-## References & Deep Dives
-
-* [**Architecture Whitepaper (`references/grill-logic-whitepaper.md`)**](references/grill-logic-whitepaper.md): Canonical theoretical synthesis of DMAD lineage, W/S dynamics, and state machines.
-* [**Engineering Requirements Document (`references/build-requirements.md`)**](references/build-requirements.md): System specifications and acceptance criteria.
-* [**Epistemic Decision Registry (`LOGICAL_LEDGER.md`)**](LOGICAL_LEDGER.md): The live project ledger enforcing active negative constraints.
-* [**Logical Ledger Specification (`references/logical-ledger-spec.md`)**](references/logical-ledger-spec.md): Table format, lifecycle states, transition mechanics, and machine-readable schema.
-* [**Case Studies & Reference Examples (`references/examples.md`)**](references/examples.md): Detailed traces showing how Grill-Logic catches caching fallacies, false axioms, and ABI incompatibilities.
-* [**Claude Code Guidelines (`CLAUDE.md`)**](CLAUDE.md): Specific instructions and conventions for Claude Code.
-* [**Agent Guidelines (`AGENTS.md`)**](AGENTS.md): Operational contracts for Antigravity, Codex, Cursor, and Windsurf.
-

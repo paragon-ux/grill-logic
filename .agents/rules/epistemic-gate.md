@@ -1,13 +1,8 @@
----
-trigger: always_on
-description: Pre-flight epistemic gate enforcing premise validation on architectural proposals before code generation.
----
+# Epistemic Gate: Continuous Premise Validation (Fail-Closed)
 
-# Epistemic Gate: Continuous Premise Validation
+This rule runs continuously in multi-turn conversations, intercepting architectural proposals to prevent building on unexamined assumptions or refuted designs.
 
-This rule runs continuously in multi-turn conversations, eliminating the need to manually invoke `/grill-logic` on every prompt.
-
-## Activation Trigger
+## Activation Triggers
 Apply this rule whenever the user (or the agent itself) proposes:
 1. Introducing a new architectural dependency, database, or infrastructure component (e.g., Redis, Kafka, Elasticsearch, Docker).
 2. Refactoring core data storage, persistence, concurrency, networking, or tenancy boundaries.
@@ -17,25 +12,30 @@ Apply this rule whenever the user (or the agent itself) proposes:
 
 ---
 
-## Autonomous Verification Protocol
+## Autonomous Verification Protocol (Fail-Closed)
 
-Before formulating an implementation plan or executing code changes for an architectural proposal:
+Before formulating an implementation plan or writing code for an architectural proposal:
 
-1. **Check the Logical Ledger**:
-   - Inspect `LOGICAL_LEDGER.md` (if present) for active **Contrastive Refutation Rules**.
-   - If the proposal relies on a premise or inferential leap previously marked `REJECTED`, **immediately halt execution**, cite the active contrastive rule, and present the supported alternative.
+### 1. Pre-Flight Negative Constraint Check (Fail-Closed)
+Run the state engine gate check against `LOGICAL_LEDGER.md`:
+```bash
+node scripts/grill-state.mjs check-gate --proposal "<proposal>"
+```
+- **If exit code is 1 (`EPISTEMIC_FIREWALL_VIOLATION`)**: **HALT IMMEDIATELY**. Code generation is hard-blocked. Output the diagnostic block, cite the active `REJECTED` rule from `LOGICAL_LEDGER.md`, and pivot to the supported alternative.
+- **If exit code is 0**: Proceed to Step 2.
 
-2. **Isolate Premises and Assumptions**:
-   - Stated Constraints & Requirements: Explicit factual claims.
-   - Hidden Assumptions: Unspoken premises regarding environment, concurrency, API contracts, network latency, or failure domains.
-   - Proposed Architecture: The candidate implementation.
+### 2. Epistemic Mode Routing
+- **If autonomous / AFK proposal** (`self-grill:`, `autonomous:`, or agent-proposed architecture):
+  - Execute **State Machine 1 (`/self-grill`)**.
+  - Asymmetric Autonomy: $W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$. $S_{\text{LLM}}$ applies at full strength.
+  - **Tool Invariant**: Every round requires a real tool probe (`grep_search`, `run_command`, `view_file`, or subagent). Zero simulated text monologues.
+  - **Token Handshake**: Subagent must log audit with matching `dispatch_token`.
+  - Gate code generation until `SUPPORTED` is committed with subagent sign-off.
+- **If collaborative / interactive design** (`interview me`, `/grill-logic`):
+  - Execute **State Machine 2 (`/grill-logic`)**.
+  - Walk the decision tree one branch at a time.
+  - **Turn Yield Invariant**: Call `ask_question` and **STOP GENERATION IMMEDIATELY**. The model is physically forbidden from answering its own questions.
+  - Log user turns. If $C_{\text{stagnant}} \ge 3$, emit the diagnostic stagnation query.
 
-3. **Autonomous Adversarial Audit (Self-Grill)**:
-   - Grounded in **Diverse Multi-Agent Debate (DMAD, ICLR 2025)**: break fixed mental sets by employing distinct problem-solving strategies rather than agreeable consensus.
-   - **Backward Refutation**: Challenge whether the proposed architecture is strictly necessary or whether a lower-complexity standard library approach satisfies the constraints without operational bloat.
-   - **Empirical Probing**: Run a rapid 1-to-5-line probe (e.g., check local configuration, search documentation, inspect codebase) if empirical claims are made.
-   - **90/10 Invariant**: Withhold solution recommendations and code generation during the premise challenge turn. Solutions are gated until concordance or convergence is established.
-
-4. **Update Ledger & Gate Execution**:
-   - Record the entry in `LOGICAL_LEDGER.md` with status (`SUPPORTED`, `REJECTED`, or `SUPERSEDED`), actor dynamics ($W, S$), and contrastive refutation rule.
-   - **Gate Execution**: Proceed with implementation **only** if the argument achieves `SUPPORTED` status. If `REJECTED`, halt code generation and enforce the contrastive alternative.
+### 3. Execution Gate
+Code generation is permitted **only** when the proposal achieves `SUPPORTED` status in `LOGICAL_LEDGER.md`. Any invariant violation or unhandled error **fails closed** and terminates execution.

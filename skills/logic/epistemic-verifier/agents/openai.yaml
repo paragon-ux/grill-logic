@@ -1,6 +1,0 @@
-interface:
-  display_name: "Epistemic Verifier"
-  short_description: "Truth-maintenance engine and multi-round logic auditor"
-  default_prompt: "Extract premises into Standard Logical Form (P1..Pn ⊢ C), run multi-round epistemic challenge, record in LOGICAL_LEDGER.md, and gate execution."
-policy:
-  allow_implicit_invocation: true

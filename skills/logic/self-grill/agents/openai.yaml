@@ -1,0 +1,6 @@
+interface:
+  display_name: "Self-Grill (Autonomous DMAD Engine)"
+  short_description: "Autonomous epistemic truth verification and premise stress-testing using DMAD empirical tool probes."
+  default_prompt: "Run an autonomous DMAD epistemic audit on this architectural proposal:"
+policy:
+  allow_implicit_invocation: false

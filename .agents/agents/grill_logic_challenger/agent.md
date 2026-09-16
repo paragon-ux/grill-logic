@@ -2,6 +2,7 @@
 name: grill_logic_challenger
 description: An ephemeral, adversarial epistemic challenger for Grill-Logic Self-Grill. Operates with virgin context and a single loss function to audit proposals using Diverse Multi-Agent Debate (DMAD) strategies, compute S_LLM, and enforce solution sign-off.
 tools:
+    - run_command
     - send_message
     - find_by_name
     - grep_search
