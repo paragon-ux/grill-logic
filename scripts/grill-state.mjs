@@ -410,8 +410,8 @@ export function cmdCheckGate(args) {
   // Check keyword collisions against contrastive refutations
   for (const r of rejectedRules) {
     const rawLower = r.raw.toLowerCase();
-    // Extract negative constraints ("do not infer...", "do not use...")
-    const match = rawLower.match(/do not (?:infer|use|replace|deploy) ([^.]+)/i);
+    // Extract negative constraints ("do not infer...", "do not use...", "do not build...")
+    const match = rawLower.match(/do not (?:infer|use|replace|deploy|build|implement|create|adopt|introduce) ([^.]+?)(?: because|\.|$)/i);
     if (match) {
       const blockedConcept = match[1].trim();
       const keywords = blockedConcept.split(/\s+/).filter(w => w.length > 3);
