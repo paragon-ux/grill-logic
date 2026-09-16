@@ -1,6 +1,6 @@
 {
   "name": "@grill-logic/skills",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Epistemic Truth Maintenance and Argument-Driven Premise Validation for Agentic AI Systems",
   "type": "module",
   "license": "MIT",
@@ -24,6 +24,7 @@
     "truth-maintenance"
   ],
   "scripts": {
-    "test": "node scripts/test-skills.mjs && node scripts/test-ledger.mjs"
+    "test": "node scripts/test-skills.mjs && node scripts/test-ledger.mjs && node scripts/test-v2-protocol.mjs",
+    "clear-ledger": "node scripts/clear-ledger.mjs"
   }
 }

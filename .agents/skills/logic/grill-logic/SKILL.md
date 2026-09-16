@@ -1,41 +1,45 @@
 ---
 name: grill-logic
-description: Grill the premises and inferential leaps of an architectural proposal or prompt before writing code. Use when proposing a system design, database change, dependency, or refactor.
+description: Grill the premises of an architectural proposal or plan before writing code. Prevents building on unexamined assumptions.
 disable-model-invocation: true
-argument-hint: "[proposal or plan text]"
+argument-hint: "[proposal or design text]"
 ---
 
 # Grill-Logic
 
-Stress-test an architectural proposal or plan before anyone acts on it. Grill-Logic isolates the inferential bridge between your premises and your conclusion, challenging the jump before code execution begins.
+Stress-test an architectural proposal, database choice, infrastructure component, or major refactor before code execution begins. Grill-Logic challenges the weakest premises of an argument, ensuring that engineering plans rest upon verified facts rather than unexamined assumptions.
 
-This skill delegates the epistemic audit to `epistemic-verifier`, which runs **multi-round epistemic challenge** (proposing, challenging, and cross-examining assumptions round-by-round until the frontier is settled).
+The system enforces a strict **90% challenge / 10% solution invariant**: solutions are never offered during challenge turns and are only presented after concordance is reached.
 
-## How to Invoke
+---
 
-Prompts do not require quotation marks or synthetic flags. State your proposal naturally:
+## Invocation & Modes
 
-```bash
-# Default: Runs multi-round epistemic challenge until settled
-/grill-logic migrate session tokens to redis cluster
+Grill-Logic parses natural language directly without requiring synthetic CLI flags:
 
-# Autonomous self-grill (AFK): Audits internally without interrupting you
-/grill-logic self-grill: refactor query pipeline to use raw sockets
-
-# Interactive human interview (HITL): Formulates multiple-choice questions for you
-/grill-logic interview me on adopting GraphQL for our mobile backend
-
-# Deterministic probe: Enforces empirical tool/compiler verification
-/grill-logic check in sandbox if jemalloc builds with MSVC
+### 1. Mode A: User Grill-Logic (Interactive Concordance)
+Use when collaborating with the agent to refine an architecture:
+```text
+/grill-logic interview me on migrating our session store to Redis
+/grill-logic grill me on decomposing the monolith into 6 microservices
+/grill-logic [proposal text]
 ```
+- **Dynamic**: The agent challenges your weakest premises using evidence and solvers.
+- **Human Authority**: Your autonomy weight ($W_{\text{human}}$) is high. You retain sovereign decision stakes and final say.
+- **Solution Gating**: Once concordance is reached, the agent presents 3 candidate solutions plus a free-response option via an interactive question.
 
-## The Rhythm
+### 2. Mode B: Self-Grill (Autonomous Adversarial Audit)
+Use when you want an autonomous, thorough audit before code generation:
+```text
+/grill-logic self-grill: use SQLite WAL mode over NFS for multi-container workers
+/grill-logic autonomously audit our caching strategy before implementation
+```
+- **Dynamic**: The agent spawns a fresh adversarial subagent with virgin context ($W_{\text{subagent}} > W_{\text{LLM}}$).
+- **Cognitive Diversity**: Grounded in Diverse Multi-Agent Debate (DMAD, ICLR 2025) to break fixed mental sets through distinct problem-solving strategies.
+- **Rigorous Sign-Off**: The subagent generates $S_{\text{LLM}}$ by inspecting the proposer's reasoning trace and signs off before delivery.
 
-1. **Deconstruct**: Extracts explicit premises ($P_1..P_n$), uncovers hidden assumptions ($P_{\text{hidden}}$), and isolates the candidate action ($C$).
-2. **Multi-Round Epistemic Challenge**:
-   * *Round 1*: Attacks the inferential bridge ($P \vdash C$). Does $P$ necessitate $C$, or is there a simpler alternative $C'$?
-   * *Round 2*: Challenges the counter-hypothesis itself. If an alternative is proposed, stress-tests its boundary conditions.
-   * *Round $k$*: Continues until the epistemic frontier is settled.
-3. **Ledger & Gate**: Records status (`SUPPORTED`, `REJECTED`, or `UNCERTAIN`) in `LOGICAL_LEDGER.md`. If rejected, registers an active **Contrastive Refutation Rule** and halts execution.
+---
 
-Call the Skill tool for `epistemic-verifier` to execute the audit.
+## Execution Handoff
+
+Immediately invoke the `epistemic-verifier` skill to execute the verified state machine protocol.

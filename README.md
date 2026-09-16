@@ -73,7 +73,7 @@ Grill-Logic enforces a rigorous architectural separation between conversational 
 
 ### Failure Mode #3: Hallucinations Resurrect in Later Turns
 * **The Problem**: In a multi-turn conversation, you reject an invalid proposal in Turn 2. By Turn 6, the model suffers from *semantic attraction* and proposes the exact same flawed pattern again.
-* **The Grill-Logic Fix (Contrastive Constraints)**: When an argument is rejected, Grill-Logic records an explicit **Contrastive Refutation Rule** in [`LOGICAL_LEDGER.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/LOGICAL_LEDGER.md). This acts as a persistent negative constraint firewall that hard-blocks regression in subsequent turns.
+* **The Grill-Logic Fix (Contrastive Constraints)**: When an argument is rejected, Grill-Logic records an explicit **Contrastive Refutation Rule** in [`LOGICAL_LEDGER.md`](LOGICAL_LEDGER.md). This acts as a persistent negative constraint firewall that hard-blocks regression in subsequent turns.
 
 ---
 
@@ -104,16 +104,16 @@ Grill-Logic is a skill, not a CLI utility. **Prompts do not require quotation ma
 
 Typing `/grill-logic` on every prompt in a long conversation is a burden. Grill-Logic provides an abstract, harness-agnostic hook architecture that automatically triggers pre-flight premise verification whenever an architectural or dependency change is proposed:
 
-1. **Always-On Epistemic Rule ([`.agents/rules/epistemic-gate.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/.agents/rules/epistemic-gate.md))**:
-   Zero-script continuous rule active across Antigravity, Claude Code, Cursor, and Codex. Detects architectural assertions, checks [`LOGICAL_LEDGER.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/LOGICAL_LEDGER.md) for active negative constraints, and stress-tests premises before code generation begins.
-2. **Agent Lifecycle Hook Architecture ([`references/hooks-setup-guide.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/hooks-setup-guide.md))**:
+1. **Always-On Epistemic Rule ([`.agents/rules/epistemic-gate.md`](.agents/rules/epistemic-gate.md))**:
+   Zero-script continuous rule active across Antigravity, Claude Code, Cursor, and Codex. Detects architectural assertions, checks [`LOGICAL_LEDGER.md`](LOGICAL_LEDGER.md) for active negative constraints, and stress-tests premises before code generation begins.
+2. **Agent Lifecycle Hook Architecture ([`references/hooks-setup-guide.md`](references/hooks-setup-guide.md))**:
    Abstract operational guide defining the prompt-interception lifecycle, assertion analysis patterns, and fail-open guarantees for non-Git agent hooks across any custom harness.
 
 ---
 
 ## Empirical Scoreboard (Subagent Verification)
 
-Grill-Logic was rigorously dogfooded against common architectural failure modes using autonomous subagents. The active constraints are stored live in [`LOGICAL_LEDGER.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/LOGICAL_LEDGER.md):
+Grill-Logic was rigorously dogfooded against common architectural failure modes using autonomous subagents (full audit traces and reference cases documented in [`references/examples.md`](references/examples.md)):
 
 | Proposal | Auditor Finding | Verdict | Contrastive Rule Enforced |
 | :--- | :--- | :--- | :--- |
@@ -137,6 +137,7 @@ grill-logic/
 │   │   ├── grill-logic/         # User front door (compact ~40-line invocation interface)
 │   │   └── epistemic-verifier/  # Core truth engine (multi-round epistemic verification)
 │   └── setup/
+│       ├── clear-ledger/        # Automated ledger reset and archiving tool
 │       └── setup-grill-logic/   # Prompt-driven automated repository configurer
 ├── references/
 │   ├── hooks-setup-guide.md    # Abstract agent lifecycle hook architecture guide
@@ -153,20 +154,23 @@ grill-logic/
 
 ---
 
-## Lineage & Prior Art
+## Lineage & Theoretical Foundations
 
-While Grill-Logic is a standalone engineering framework designed specifically for real-world software development with coding agents, it synthesizes insights from research in cognitive science and AI reasoning:
-* **Diverse Multi-Agent Debate (DMAD)**: Inspires our intra-audit multi-round structure, breaking cognitive fixation (*Einstellung effect*) by using round 2 to challenge the counter-hypothesis itself rather than settling for unexamined consensus.
+Grill-Logic synthesizes breakthroughs across cognitive science, multi-agent debate, and epistemic truth maintenance:
+* **Diverse Multi-Agent Debate (DMAD, ICLR 2025)**: Proves that cosmetic persona assignment traps models in the *Einstellung effect* (fixed mental sets). Grill-Logic equips adversarial subagents with distinct problem-solving strategies (backward refutation, empirical probing, premise inversion) to break cognitive fixations.
+* **Autonomy Weight ($W$) & Skepticism Signal ($S$)**: Decouples challenger-credibility from target-deference ($W_{\text{subagent}} > W_{\text{LLM}}$), applying $S_{\text{LLM}}$ at full strength against the main model while preserving sovereign developer authority ($W_{\text{human}}$).
+* **The 90/10 Invariant**: Gating solution generation until after premise concordance is reached, preventing premature solution offering.
 * **Contrastive Chain of Thought (CCoT)**: Inspires our runtime negative constraint firewall in `LOGICAL_LEDGER.md`, turning refuted architectures into permanent refutation rules that block semantic regression across turns.
-* **Actor-Agnostic Falsification**: Prioritizes deterministic tooling (5-line compiler checks, documentation searches) over multi-persona roleplay.
 
 ---
 
 ## References & Deep Dives
 
-* [**Epistemic Decision Registry (`LOGICAL_LEDGER.md`)**](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/LOGICAL_LEDGER.md): The live project ledger enforcing active negative constraints.
-* [**Logical Ledger Specification (`references/logical-ledger-spec.md`)**](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/logical-ledger-spec.md): Table format, lifecycle states, transition mechanics, and machine-readable schema.
-* [**Case Studies & Reference Examples (`references/examples.md`)**](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/examples.md): Detailed traces showing how Grill-Logic catches caching fallacies, false axioms, and ABI incompatibilities.
-* [**Claude Code Guidelines (`CLAUDE.md`)**](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/CLAUDE.md): Specific instructions and conventions for Claude Code.
-* [**Agent Guidelines (`AGENTS.md`)**](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/AGENTS.md): Operational contracts for Antigravity, Codex, Cursor, and Windsurf.
+* [**Architecture Whitepaper (`references/grill-logic-whitepaper.md`)**](references/grill-logic-whitepaper.md): Canonical theoretical synthesis of DMAD lineage, W/S dynamics, and state machines.
+* [**Engineering Requirements Document (`references/build-requirements.md`)**](references/build-requirements.md): System specifications and acceptance criteria.
+* [**Epistemic Decision Registry (`LOGICAL_LEDGER.md`)**](LOGICAL_LEDGER.md): The live project ledger enforcing active negative constraints.
+* [**Logical Ledger Specification (`references/logical-ledger-spec.md`)**](references/logical-ledger-spec.md): Table format, lifecycle states, transition mechanics, and machine-readable schema.
+* [**Case Studies & Reference Examples (`references/examples.md`)**](references/examples.md): Detailed traces showing how Grill-Logic catches caching fallacies, false axioms, and ABI incompatibilities.
+* [**Claude Code Guidelines (`CLAUDE.md`)**](CLAUDE.md): Specific instructions and conventions for Claude Code.
+* [**Agent Guidelines (`AGENTS.md`)**](AGENTS.md): Operational contracts for Antigravity, Codex, Cursor, and Windsurf.
 

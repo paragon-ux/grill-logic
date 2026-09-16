@@ -1,0 +1,6 @@
+interface:
+  display_name: "Clear Ledger"
+  short_description: "Reset the project logical ledger and archive prior entries"
+  default_prompt: "Archive active decision entries to LOGICAL_LEDGER.archive.md and reset LOGICAL_LEDGER.md to a clean initialized state."
+policy:
+  allow_implicit_invocation: false
