@@ -246,8 +246,10 @@ assert(formulatedLedger.includes('Interpretation Gate'), 'Records Interpretation
 
 const formulatedState = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
 assert(formulatedState.canonical_state === 'S_U0B_ADD_LOGIC', 'State initialized to S_U0B_ADD_LOGIC');
-assert(formulatedState.tally.premises.agree === 1, 'Premise agree tally initialized to 1');
-assert(formulatedState.tally.solution.agree === 0, 'Solution agree tally initialized to 0');
+assert(formulatedState.tally.premises.agree === 0, 'Premise agree tally initialized unassessed to 0');
+assert(formulatedState.tally.solution.agree === 0, 'Solution agree tally initialized unassessed to 0');
+assert(formulatedState.tally.proposer === null, 'Proposer stance unassessed');
+assert(formulatedState.tally.challenger === null, 'Challenger stance unassessed');
 
 // 7.2 NeSy Solver: formally_invalid triggers auto-refutation
 const nesyConflict = runCmd('node scripts/grill-state.mjs validate-nesy --payload "{\\"dependencies\\":[[\\"rule2\\",\\"rule1\\"]],\\"expressions\\":[{\\"left\\":\\"database_engine\\",\\"operator\\":\\"==\\",\\"right\\":\\"sqlite\\"},{\\"left\\":\\"storage_type\\",\\"operator\\":\\"!=\\",\\"right\\":\\"nfs\\"}]}" --facts "{\\"database_engine\\":\\"sqlite\\",\\"storage_type\\":\\"nfs\\"}"');
@@ -277,8 +279,27 @@ assert(advanceResult.code === 0, 'Procedural advance succeeds when no counter on
 
 const stateAfterAdvance = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
 assert(stateAfterAdvance.canonical_state === 'S_A7_CONCORDANCE_SIGN_OFF', 'Advanced to S_A7_CONCORDANCE_SIGN_OFF');
-assert(stateAfterAdvance.tally.solution.agree === 1, 'Solution agree tally incremented to 1');
+assert(stateAfterAdvance.tally.challenger === 'UNOBJECTED', 'Challenger recorded as UNOBJECTED');
+assert(stateAfterAdvance.tally.solution.agree === 1, 'Solution agree tally reflects proposer only (1)');
+assert(stateAfterAdvance.procedural_clearance === true, 'procedural_clearance set to true');
 assert(stateAfterAdvance.subagent_signoff === true, 'Sign-off granted on procedural advance');
+
+// 7.7 Commit ACCEPTED_SOLUTION updates formulated row in LOGICAL_LEDGER.md
+const acceptCommit = runCmd('node scripts/grill-state.mjs commit --status ACCEPTED_SOLUTION --rule "Standard postgres with pgbouncer suffices"');
+assert(acceptCommit.code === 0, 'Commit succeeds for ACCEPTED_SOLUTION');
+
+const finalLedger = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(finalLedger.includes('**ACCEPTED_SOLUTION**'), 'LOGICAL_LEDGER.md updated to ACCEPTED_SOLUTION');
+
+// 7.8 Human HITL user turn with empirical counter and choice
+runCmd('node scripts/grill-state.mjs init --machine human --input "Microservices refactoring debate"');
+const userTurnResult = runCmd('node scripts/grill-state.mjs record-user-turn --new-prop true --empirical-counter true --choice "Option 1 Minimal"');
+assert(userTurnResult.code === 0, 'record-user-turn succeeds with empirical counter');
+
+const humanState = JSON.parse(fs.readFileSync('.grill-logic/state.json', 'utf8'));
+assert(humanState.canonical_state === 'S_U4_EVAL_COUNTER', 'Canonical state transitioned to S_U4_EVAL_COUNTER');
+assert(humanState.empirical_counter === true, 'empirical_counter recorded in state');
+assert(humanState.last_choice === 'Option 1 Minimal', 'last_choice recorded in state');
 
 // Cleanup
 runCmd('node scripts/clear-ledger.mjs --no-archive');

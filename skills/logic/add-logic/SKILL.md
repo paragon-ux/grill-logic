@@ -56,8 +56,9 @@ Register the formulated entry via the state engine:
 ```bash
 node scripts/grill-state.mjs add-logic --prompt "<original prompt>" --premises '<JSON array of premises>' --conclusion "<conclusion>"
 ```
-This commits the argument to `LOGICAL_LEDGER.md` with status `FORMULATED` and initializes tallies:
-`tally: { premises: { agree: 1, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } }`.
+This commits the argument to `LOGICAL_LEDGER.md` with status `FORMULATED` and initializes tallies as unassessed (zero votes cast):
+`tally: { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } }`.
+(User agreement here confirms the discussion baseline, not premise truth).
 
 ### Step 5: Deterministic Validation (NeSy Solver)
 Run deterministic validation on the formulated entry:

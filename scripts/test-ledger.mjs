@@ -73,8 +73,12 @@ function validateRows(rows, sourceName) {
     const isRejected = row.status.includes("REJECTED");
     const isSupported = row.status.includes("SUPPORTED");
     const isSuperseded = row.status.includes("SUPERSEDED");
+    const isFormulated = row.status.includes("FORMULATED");
+    const isUncertain = row.status.includes("UNCERTAIN");
+    const isTentative = row.status.includes("TENTATIVE_SOLUTION");
+    const isAcceptedSol = row.status.includes("ACCEPTED_SOLUTION");
 
-    if (!isRejected && !isSupported && !isSuperseded) {
+    if (!isRejected && !isSupported && !isSuperseded && !isFormulated && !isUncertain && !isTentative && !isAcceptedSol) {
       console.error(`Error: Invalid status in ${sourceName} entry ${row.id}: ${row.status}`);
       process.exit(1);
     }
@@ -87,7 +91,7 @@ function validateRows(rows, sourceName) {
       }
     }
 
-    if (isSupported) supportedCount++;
+    if (isSupported || isAcceptedSol) supportedCount++;
     if (isSuperseded) supersededCount++;
   }
   return { rejectedCount, supportedCount, supersededCount };

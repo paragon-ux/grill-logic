@@ -55,13 +55,18 @@ Grill-Logic executes **State Machine 2 (Human Sequential Interview / HITL Engine
 8. Synthesize Specification & Commit to LOGICAL_LEDGER.md
 ```
 
-### Step 1: Initialize Session
+### Step 0: Mandatory Interpretation Gate (`/add-logic`)
+Before mapping decision tree branches, ensure the baseline topic is formulated in `LOGICAL_LEDGER.md`.
+- **If unformulated**: Execute `/add-logic [topic]`. Decompose premises and proposed conclusion, confirm baseline with user verbatim, and commit as `FORMULATED`.
+- **Deterministic Validation**: Run `node scripts/grill-state.mjs validate-nesy --payload '<JSON>'`. Only proceed to the interview if structurally `valid`.
+
+### Step 1: Initialize Session (S_U0_INIT)
 Run the state engine with the design topic:
 ```bash
 node scripts/grill-state.mjs init --machine human --input "<topic>"
 ```
 - **If exit code is non-zero (e.g. `INPUT_GATE_HALT`)**: Stop immediately. Output the diagnostic block.
-- **If exit code is 0**: Proceed to Step 2.
+- **If exit code is 0**: Proceed to Step 2. State transitions to `S_U1_PREMISE_ISOLATION`.
 
 ### Step 2: Map the Decision Tree
 Identify the foundational architectural dependencies. Order them so prerequisites come first:

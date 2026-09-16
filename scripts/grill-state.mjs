@@ -314,7 +314,14 @@ export function cmdInit(args) {
     version: '2.2.0',
     active_machine: isAutonomous ? 'AUTONOMOUS_DMAD' : 'HUMAN_HITL',
     current_state: isAutonomous ? 'AWAITING_SUBAGENT_DISPATCH' : 'IDENTIFY_BRANCHES',
+    canonical_state: isAutonomous ? 'S_A1_TOKEN_ISSUE' : 'S_U1_PREMISE_ISOLATION',
     input_text: input,
+    tally: {
+      proposer: null,
+      challenger: null,
+      premises: { agree: 0, disagree: 0, uncertain: 0 },
+      solution: { agree: 0, disagree: 0, uncertain: 0 }
+    },
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     turn_count: 0,
@@ -460,17 +467,25 @@ export function cmdRecordSubagentAudit(args) {
 
     if (conclusionStatus === 'CHALLENGED') {
       state.current_state = 'AWAITING_LLM_RESPONSE';
+      state.canonical_state = 'S_A4_ROUND_2_PROPOSER_CONFRONTATION';
       state.conclusion_status = 'CHALLENGED';
       state.premise_status = premiseStatus || 'UNTESTED';
       state.inference_status = inferenceStatus || 'INVALID_LEAP';
       state.contrastive_rule = rule;
+      state.tally = state.tally || { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } };
+      state.tally.challenger = 'UNCERTAIN';
+      state.tally.premises = { agree: 0, disagree: 0, uncertain: 1 };
     } else if (conclusionStatus === 'REJECTED') {
       state.current_state = 'SUBAGENT_AUDIT_LOGGED';
+      state.canonical_state = 'S_A6_REJECTION';
       state.conclusion_status = 'REJECTED';
       state.premise_status = premiseStatus || 'FALSIFIED';
       state.inference_status = inferenceStatus || 'INVALID_LEAP';
       state.contrastive_rule = rule;
       state.subagent_signoff = false;
+      state.tally = state.tally || { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } };
+      state.tally.challenger = 'DISAGREE';
+      state.tally.premises = { agree: 0, disagree: 1, uncertain: 0 };
     } else {
       emitDiagnostic({
         code: 'INVALID_STATUS',
@@ -483,18 +498,28 @@ export function cmdRecordSubagentAudit(args) {
     // Round 2 (Evaluation of Proposer's Synthesized C'):
     if (conclusionStatus === 'SUPPORTED') {
       state.current_state = 'SUBAGENT_SIGNED_OFF';
+      state.canonical_state = 'S_A7_CONCORDANCE_SIGN_OFF';
       state.conclusion_status = 'SUPPORTED';
       state.premise_status = premiseStatus || 'CONFIRMED';
       state.inference_status = inferenceStatus || 'VALID';
       state.contrastive_rule = rule;
       state.subagent_signoff = true; // Auto-signoff on verified synthesis
+      state.tally = state.tally || { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } };
+      state.tally.proposer = 'AGREE';
+      state.tally.challenger = 'AGREE';
+      state.tally.solution = { agree: 2, disagree: 0, uncertain: 0 };
     } else if (conclusionStatus === 'REJECTED') {
       state.current_state = 'SUBAGENT_AUDIT_LOGGED';
+      state.canonical_state = 'S_A6_REJECTION';
       state.conclusion_status = 'REJECTED';
       state.premise_status = premiseStatus || 'FALSIFIED';
       state.inference_status = inferenceStatus || 'INVALID_LEAP';
       state.contrastive_rule = rule;
       state.subagent_signoff = false;
+      state.tally = state.tally || { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } };
+      state.tally.proposer = 'AGREE';
+      state.tally.challenger = 'DISAGREE';
+      state.tally.solution = { agree: 1, disagree: 1, uncertain: 0 };
     } else {
       emitDiagnostic({
         code: 'INVALID_STATUS',
@@ -602,10 +627,16 @@ export function cmdRecordLlmResponse(args) {
 
   if (type === 'concede') {
     state.current_state = 'LLM_CONCEDED';
+    state.canonical_state = 'S_A6_REJECTION';
     state.conclusion_status = 'REJECTED';
     state.premise_status = 'FALSIFIED';
+    state.tally = state.tally || { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } };
+    state.tally.proposer = 'DISAGREE';
   } else {
     state.current_state = 'AWAITING_SUBAGENT_EVAL';
+    state.canonical_state = 'S_A5_SUBAGENT_EVAL';
+    state.tally = state.tally || { proposer: null, challenger: null, premises: { agree: 0, disagree: 0, uncertain: 0 }, solution: { agree: 0, disagree: 0, uncertain: 0 } };
+    state.tally.proposer = 'AGREE';
   }
 
   state.turn_count += 1;
@@ -642,6 +673,7 @@ export function cmdRecordUserTurn(args) {
   }
 
   const hasNewProp = String(args['new-prop']).toLowerCase() === 'true';
+  const empiricalCounter = args['empirical-counter'] !== undefined ? String(args['empirical-counter']).toLowerCase() === 'true' : false;
   const choice = getArgStr(args, 'choice');
 
   state.turn_count += 1;
@@ -654,6 +686,11 @@ export function cmdRecordUserTurn(args) {
     sHuman.reassertions_count += 1;
     sHuman.consecutive_stagnant_turns += 1;
   }
+
+  sHuman.empirical_counter = empiricalCounter;
+  state.empirical_counter = empiricalCounter;
+  if (choice) state.last_choice = choice;
+  state.canonical_state = 'S_U4_EVAL_COUNTER';
 
   // Stagnation threshold: 3 consecutive turns without new propositions
   if (sHuman.consecutive_stagnant_turns >= 3) {
@@ -677,7 +714,7 @@ export function cmdRecordUserTurn(args) {
   state.updated_at = new Date().toISOString();
   saveState(state);
 
-  console.log(`[GRILL-STATE] Recorded user turn #${state.turn_count}. (New prop: ${hasNewProp}, Stagnant count: ${sHuman.consecutive_stagnant_turns})`);
+  console.log(`[GRILL-STATE] Recorded user turn #${state.turn_count}. (New prop: ${hasNewProp}, Empirical counter: ${empiricalCounter}, Stagnant count: ${sHuman.consecutive_stagnant_turns})`);
 }
 
 export function cmdRecordDiagnosticAck() {
@@ -762,17 +799,22 @@ export function cmdAddLogic(args) {
     fs.writeFileSync(LEDGER_FILE, updatedLedger, 'utf8');
   }
 
+  const activeMachine = (getArgStr(args, 'machine') || '').toUpperCase() === 'AUTONOMOUS' ? 'AUTONOMOUS_DMAD' : 'HUMAN_HITL';
+  const canonicalState = activeMachine === 'AUTONOMOUS_DMAD' ? 'S_A0B_ADD_LOGIC' : 'S_U0B_ADD_LOGIC';
+
   const state = {
     version: '2.2.0',
     arg_id: argId,
-    active_machine: 'HUMAN_HITL',
-    canonical_state: 'S_U0B_ADD_LOGIC',
-    current_state: 'S_U0B_ADD_LOGIC',
+    active_machine: activeMachine,
+    canonical_state: canonicalState,
+    current_state: canonicalState,
     source_prompt: prompt,
     premises,
     conclusion: conclusion || prompt,
     tally: {
-      premises: { agree: 1, disagree: 0, uncertain: 0 },
+      proposer: null,
+      challenger: null,
+      premises: { agree: 0, disagree: 0, uncertain: 0 },
       solution: { agree: 0, disagree: 0, uncertain: 0 }
     },
     validation: null,
@@ -783,7 +825,7 @@ export function cmdAddLogic(args) {
 
   saveState(state);
   console.log(`[GRILL-STATE] Baseline logic formulated: ${argId} committed as FORMULATED.`);
-  console.log(`[GRILL-STATE] Canonical State: S_U0B_ADD_LOGIC. Tally initialized. Ready for validation.`);
+  console.log(`[GRILL-STATE] Canonical State: ${canonicalState}. Tally initialized unassessed (0 votes cast). Ready for validation.`);
 }
 
 export function cmdValidateNeSy(args) {
@@ -901,15 +943,16 @@ export function cmdRecordProceduralAdvance(args) {
     process.exit(1);
   }
 
-  if (!state.tally) {
-    state.tally = {
-      premises: { agree: 1, disagree: 0, uncertain: 0 },
-      solution: { agree: 1, disagree: 0, uncertain: 0 }
-    };
-  } else {
-    state.tally.solution = state.tally.solution || { agree: 0, disagree: 0, uncertain: 0 };
-    state.tally.solution.agree += 1;
-  }
+  state.tally = state.tally || {
+    proposer: 'AGREE',
+    challenger: 'UNOBJECTED',
+    premises: { agree: 1, disagree: 0, uncertain: 0 },
+    solution: { agree: 1, disagree: 0, uncertain: 0 }
+  };
+  state.tally.proposer = 'AGREE';
+  state.tally.challenger = 'UNOBJECTED';
+  state.tally.solution = { agree: 1, disagree: 0, uncertain: 0 };
+  state.procedural_clearance = true;
 
   state.canonical_state = 'S_A7_CONCORDANCE_SIGN_OFF';
   state.current_state = 'SUBAGENT_SIGNED_OFF';
@@ -919,7 +962,7 @@ export function cmdRecordProceduralAdvance(args) {
 
   saveState(state);
   console.log('[GRILL-STATE] Procedural advance recorded: No empirical counter on table.');
-  console.log(`[GRILL-STATE] Canonical State: S_A7_CONCORDANCE_SIGN_OFF. Tally updated.`);
+  console.log(`[GRILL-STATE] Canonical State: S_A7_CONCORDANCE_SIGN_OFF. Challenger: UNOBJECTED (procedural clearance).`);
 }
 
 export function cmdCheckGate(args) {
@@ -962,11 +1005,21 @@ export function cmdCommit(args) {
   const status = getArgStr(args, 'status').toUpperCase();
   const rule = getArgStr(args, 'rule', state.contrastive_rule || '');
 
-  if (status !== 'SUPPORTED' && status !== 'REJECTED' && status !== 'SUPERSEDED') {
+  const VALID_STATUSES = [
+    'FORMULATED',
+    'SUPPORTED',
+    'REJECTED',
+    'UNCERTAIN',
+    'TENTATIVE_SOLUTION',
+    'ACCEPTED_SOLUTION',
+    'SUPERSEDED'
+  ];
+
+  if (!VALID_STATUSES.includes(status)) {
     emitDiagnostic({
       code: 'INVALID_STATUS',
-      reason: `Status must be SUPPORTED, REJECTED, or SUPERSEDED. Received: '${status}'`,
-      remediation: 'Provide `--status SUPPORTED` or `--status REJECTED`.'
+      reason: `Status must be one of [${VALID_STATUSES.join(', ')}]. Received: '${status}'`,
+      remediation: `Provide --status with a valid status: ${VALID_STATUSES.join('|')}.`
     });
     process.exit(1);
   }
@@ -1005,8 +1058,8 @@ export function cmdCommit(args) {
       process.exit(1);
     }
 
-    // Asymmetric Override Guard: LLM (W=0.2) cannot commit SUPPORTED if subagent rejected
-    if (status === 'SUPPORTED' && state.conclusion_status === 'REJECTED') {
+    // Asymmetric Override Guard: LLM (W=0.2) cannot commit SUPPORTED / ACCEPTED_SOLUTION if subagent rejected
+    if ((status === 'SUPPORTED' || status === 'ACCEPTED_SOLUTION') && state.conclusion_status === 'REJECTED') {
       emitDiagnostic({
         code: 'ASYMMETRIC_OVERRIDE_FORBIDDEN',
         machine: state.active_machine,
@@ -1019,19 +1072,19 @@ export function cmdCommit(args) {
       process.exit(1);
     }
 
-    // Subagent Signoff Guard: Cannot commit SUPPORTED without subagent signoff
-    if (status === 'SUPPORTED' && !state.subagent_signoff) {
+    // Subagent Signoff Guard: Cannot commit SUPPORTED / ACCEPTED_SOLUTION without subagent signoff
+    if ((status === 'SUPPORTED' || status === 'ACCEPTED_SOLUTION') && !state.subagent_signoff) {
       emitDiagnostic({
         code: 'SIGNOFF_TOKEN_MISSING',
         machine: state.active_machine,
         state: state.current_state,
-        reason: 'Cannot commit SUPPORTED status without explicit subagent sign-off in state.',
+        reason: 'Cannot commit SUPPORTED or ACCEPTED_SOLUTION status without explicit subagent sign-off in state.',
         remediation: 'Subagent must submit conclusion_status: "SUPPORTED" in Round 2.'
       });
       process.exit(1);
     }
   } else if (state.active_machine === 'HUMAN_HITL') {
-    if (state.epistemic_context.s_human.diagnostic_required) {
+    if (state.epistemic_context && state.epistemic_context.s_human && state.epistemic_context.s_human.diagnostic_required) {
       emitDiagnostic({
         code: 'HUMAN_STAGNATION_ALERT',
         machine: state.active_machine,
@@ -1054,18 +1107,24 @@ export function cmdCommit(args) {
   }
 
   const ledgerContent = fs.readFileSync(LEDGER_FILE, 'utf8');
-  const argMatches = [...ledgerContent.matchAll(/\*\*ARG-(\d+)\*\*/g)];
-  const nextIdNum = argMatches.length > 0 ? Math.max(...argMatches.map(m => parseInt(m[1], 10))) + 1 : 1;
-  const argId = `ARG-${String(nextIdNum).padStart(2, '0')}`;
+  let argId = state.arg_id;
+  if (!argId) {
+    const argMatches = [...ledgerContent.matchAll(/\*\*ARG-(\d+)\*\*/g)];
+    const nextIdNum = argMatches.length > 0 ? Math.max(...argMatches.map(m => parseInt(m[1], 10))) + 1 : 1;
+    argId = `ARG-${String(nextIdNum).padStart(2, '0')}`;
+  }
 
-  const cleanInput = state.input_text.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  const inputPrompt = state.source_prompt || state.input_text || '';
+  const cleanInput = inputPrompt.replace(/\|/g, '\\|').replace(/\n/g, ' ');
   const cleanRule = rule.replace(/\|/g, '\\|').replace(/\n/g, '<br>');
-  const probeSummary = state.probes_executed.map(p => `[${p.tool}]: ${p.finding}`).join('; ') || 'Standard evaluation';
+  const probeSummary = state.probes_executed ? state.probes_executed.map(p => `[${p.tool}]: ${p.finding}`).join('; ') : '';
 
   const isAuto = state.active_machine === 'AUTONOMOUS_DMAD';
-  const conclusion = isAuto ? 'Implement proposal' : 'Aligned architecture';
+  const conclusionText = state.conclusion || (isAuto ? 'Implement proposal' : 'Aligned architecture');
+  const cleanConclusion = conclusionText.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+
   const auditEvidence = isAuto
-    ? `**Subagent Challenger (W_subagent=0.8)**: ${probeSummary}`
+    ? `**Subagent Challenger (W_subagent=0.8)**: ${probeSummary || 'Standard evaluation'}`
     : `**Human HITL (W_human=1.0)**: Decision tree aligned`;
 
   let statusDisplay = `**${status}**`;
@@ -1077,21 +1136,30 @@ export function cmdCommit(args) {
     }
   }
 
-  const row = `| **${argId}** | **P**: ${cleanInput} | **C**: ${conclusion} | ${statusDisplay} | ${auditEvidence} | ${cleanRule || 'Verified'} |`;
+  const cleanPremises = state.premises && state.premises.length > 0
+    ? state.premises.map((p, idx) => typeof p === 'object' ? `**P${idx+1}**: ${p.statement || JSON.stringify(p)}` : `**P${idx+1}**: ${p}`).join('<br>')
+    : `**P**: ${cleanInput}`;
 
-  // Append row right after active decision table header
-  const tableHeaderIndex = ledgerContent.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
-  if (tableHeaderIndex === -1) {
-    emitDiagnostic({
-      code: 'LEDGER_MALFORMED',
-      reason: 'Active Decision Registry table header not found in LOGICAL_LEDGER.md.',
-      remediation: 'Check LOGICAL_LEDGER.md structure or run `/clear-ledger` to reset.'
-    });
-    process.exit(1);
+  const row = `| **${argId}** | ${cleanPremises} | **C**: ${cleanConclusion} | ${statusDisplay} | ${auditEvidence} | ${cleanRule || 'Verified'} |`;
+
+  let updatedLedger;
+  const rowRegex = new RegExp(`\\|\\s*\\*\\*${argId}\\*\\*\\s*\\|[^\\n]*`, 'g');
+  if (rowRegex.test(ledgerContent)) {
+    updatedLedger = ledgerContent.replace(rowRegex, row);
+  } else {
+    // Append row right after active decision table header
+    const tableHeaderIndex = ledgerContent.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
+    if (tableHeaderIndex === -1) {
+      emitDiagnostic({
+        code: 'LEDGER_MALFORMED',
+        reason: 'Active Decision Registry table header not found in LOGICAL_LEDGER.md.',
+        remediation: 'Check LOGICAL_LEDGER.md structure or run `/clear-ledger` to reset.'
+      });
+      process.exit(1);
+    }
+    const insertPos = tableHeaderIndex + '| :--- | :--- | :--- | :--- | :--- | :--- |'.length;
+    updatedLedger = ledgerContent.slice(0, insertPos) + '\n' + row + ledgerContent.slice(insertPos);
   }
-
-  const insertPos = tableHeaderIndex + '| :--- | :--- | :--- | :--- | :--- | :--- |'.length;
-  const updatedLedger = ledgerContent.slice(0, insertPos) + '\n' + row + ledgerContent.slice(insertPos);
 
   fs.writeFileSync(LEDGER_FILE, updatedLedger, 'utf8');
   clearState();
