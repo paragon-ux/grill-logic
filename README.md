@@ -79,17 +79,17 @@ The continuous epistemic gate monitors architectural proposals automatically. Wh
                     ┌──────────────────────────────────────────────┐
                     │  Pre-Flight Negative Constraint Firewall     │
                     │  • Pure Negative Falsification (ADR-0003)    │
-                    │  • Target: Clean(C_rejected) ∪ Clean(R_refute)│
-                    │  • Sublinear TF + Bigram Vector Cosine (τ=.30)│
-                    │  • Fails closed if collision detected       │
+                    │  • Target: Clean(C_rejected) ∪ Clean(R_refute)
+                    │  • Sublinear TF + Bigram Vector Cosine (τ=.30)
+                    │  • Fails closed if collision detected        │
                     └──────────────────────┬───────────────────────┘
                                            │ (Exit Code 0: Clean)
                                            ▼
                     ┌──────────────────────────────────────────────┐
                     │  Step 1: Interpretation Gate (/add-logic)    │
                     │  • Mandatory Human ↔ LLM decomposition       │
-                    │  • Confirms explicit (P1..Pn) & conclusion (C)│
-                    │  • Deterministic NeSy Solver Validation     │
+                    │  • Confirms explicit (P1..Pn) & conclusion (C)
+                    │  • Deterministic NeSy Solver Validation      │
                     │  • Dynamic Deduplication (τ_dup = 0.50)      │
                     │  • Commits baseline as FORMULATED            │
                     └──────────────────────┬───────────────────────┘
@@ -149,7 +149,7 @@ If an invariant is violated, an empirical probe is omitted, a dispatch token is 
 
 ```text
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║ ⛔ EPISTEMIC GATE HALT: NEGATIVE_CONSTRAINT_COLLISION                        ║
+║⛔EPISTEMIC GATE HALT: NEGATIVE_CONSTRAINT_COLLISION                         ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║ State:          S_A0A_PREFLIGHT_CHECK                                        ║
 ║ Active Machine: AUTONOMOUS_DMAD                                              ║
@@ -158,7 +158,7 @@ If an invariant is violated, an empirical probe is omitted, a dispatch token is 
 ╟──────────────────────────────────────────────────────────────────────────────╢
 ║ Diagnostic:                                                                  ║
 ║   Proposal collides with active REJECTED rule [SYS-INV-01] (similarity:      ║
-║   0.584, threshold: 0.300). Prohibited boundary: POSIX fcntl byte-range     ║
+║   0.584, threshold: 0.300). Prohibited boundary: POSIX fcntl byte-range      ║
 ║   locking over network storage.                                              ║
 ╟──────────────────────────────────────────────────────────────────────────────╢
 ║ Remediation:                                                                 ║
