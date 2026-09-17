@@ -1,6 +1,5 @@
 # Untracked development, benchmarks, and comparison repositories
 comparison/
-internal/
 
 # Operating System & Editor Artifacts
 .DS_Store

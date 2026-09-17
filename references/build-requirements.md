@@ -1,167 +1,192 @@
-# Grill-Logic v2: Engineering Requirements Document (ERD)
+# Grill-Logic v2.2: Engineering Requirements Document (ERD)
 
-**Document Version:** 2.0.0  
-**Status:** Approved for Implementation  
+**Document Version:** 2.2.0  
+**Status:** Approved for Implementation & Production Release  
 **Companion Documents:**  
 - Architecture Whitepaper: [`references/grill-logic-whitepaper.md`](grill-logic-whitepaper.md)  
-- Formal Spec: [`internal/revisions/Grill-Logic-Final-Spec.md`](../internal/revisions/Grill-Logic-Final-Spec.md)  
-- Protocol Flows: [`internal/revisions/Grill-Logic-Proposal-v2.md`](../internal/revisions/Grill-Logic-Proposal-v2.md)  
+- Epistemic Registry Spec: [`references/logical-ledger-spec.md`](logical-ledger-spec.md)  
+- Mandatory Stochastic Release Gate: [`references/adr/0001-live-stochastic-release-gate.md`](adr/0001-live-stochastic-release-gate.md)  
+- Asymmetric CoT & Frontier-Depletion: [`references/adr/0002-asymmetric-cot-and-frontier-closure.md`](adr/0002-asymmetric-cot-and-frontier-closure.md)  
+- Pure Negative Falsification & Firewall: [`references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`](adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md)  
 
 ---
 
 ## 1. Purpose & Scope
 
-This document specifies the concrete functional, behavioral, and verification requirements for building **Grill-Logic v2**. It operationalizes the game-theoretic and epistemic principles defined in the Architecture Whitepaper—specifically the **Autonomy Weight ($W$)**, the **Skepticism Signal ($S$)**, the **90/10 Solution Gating Invariant**, and the **Dual State Machine**—into production agent skills, continuous rules, subagent definitions, and test suites.
+This document specifies the concrete functional, behavioral, and verification requirements for **Grill-Logic v2.2**. It operationalizes the epistemic truth-maintenance principles defined in the Architecture Whitepaper—specifically the **Autonomy Weight ($W$)**, the **Skepticism Signal ($S$)**, the **Dynamic Neurosymbolic Epistemic Firewall (ADR-0003)**, the **Step 1 Interpretation Gate (`/add-logic`)**, the **Deterministic NeSy Invariant Solver**, the **90/10 Solution Gating Invariant**, the **Asymmetric CoT Topologies (ADR-0002)**, and the **Dual State Machines**—into production agent skills, continuous rules, standalone runtime engines, and test suites.
 
 ---
 
 ## 2. System Architecture & Component Breakdown
 
-Grill-Logic v2 consists of five tightly integrated subsystems:
+Grill-Logic v2.2 consists of six tightly integrated subsystems:
 
 ```
 +-------------------------------------------------------------------------------+
-| 1. ENTRY & ROUTING SUBSYSTEM                                                  |
-|    - skills/logic/grill-logic/SKILL.md (~40 line user-facing router)           |
-|    - AGENTS.md & CLAUDE.md discovery hooks                                    |
+| 1. PRE-FLIGHT NEGATIVE-CONSTRAINT FIREWALL (ADR-0003)                        |
+|    - scripts/grill-state.mjs check-gate                                       |
+|    - Sublinear TF + Word-Bigram Cosine Similarity (τ = 0.30, κ ≥ 0.65)        |
+|    - Falsified Boundary Normalization: Target = Clean(C_rej) ∪ Clean(R_refute)|
+|    - Pure Negative Falsification (Zero Prescriptive Bias / No Trojan Bypass)  |
+|    - User Allowlist: .grill-logic/allowlist.json                              |
++-------------------------------------------------------------------------------+
+                                    | (Exit Code 0: Clean)
+                                    v
++-------------------------------------------------------------------------------+
+| 2. STEP 1: INTERPRETATION GATE & DETERMINISTIC NESY SOLVER                    |
+|    - skills/logic/add-logic/SKILL.md (Mandatory pre-challenge gate)           |
+|    - Explicit premise isolation (P1..Pn) & candidate conclusion (C)           |
+|    - Deterministic 5-way NeSy Solver (valid, malformed, inconsistent, etc.)   |
+|    - Dynamic Deduplication (τ_dup = 0.50): In-place update vs disambiguation |
+|    - Ledger baseline registration: Status = FORMULATED                        |
++-------------------------------------------------------------------------------+
+                                    |
+                    +---------------+---------------+
+                    |                               |
+                    v                               v
++---------------------------------------+ +-------------------------------------+
+| 3. MODE A: HUMAN HITL ENGINE          | | 4. MODE B: AUTONOMOUS DMAD ENGINE   |
+|    - skills/logic/grill-logic/SKILL.md| |    - skills/logic/self-grill/SKILL.md|
+|    - Sequential decision tree walk    | |    - Fresh subagent dispatch (W=0.8)|
+|    - Strict Turn Yield (ask_question) | |    - Session dispatch_token handshake|
+|    - Behavioral S_human (R_reassert)  | |    - Empirical tool probes required  |
+|    - Human Stagnation Alert (N ≥ 3)   | |    - Asymmetric CoT (Inversion/Synth)|
+|    - Zero User Flags (Natural Lang)   | |    - Frontier-Depletion Closure (F=∅)|
++---------------------------------------+ +-------------------------------------+
+                    |                               |
+                    +---------------+---------------+
+                                    |
+                                    v
++-------------------------------------------------------------------------------+
+| 5. CONTINUOUS MONITORING, PERSISTENCE & FAIL-CLOSED RUNTIME                   |
+|    - .agents/rules/epistemic-gate.md (Continuous pre-flight hook)             |
+|    - LOGICAL_LEDGER.md (Persistent truth registry & negative constraint store)|
+|    - scripts/grill-state.mjs (.grill-logic/state.json runtime engine)         |
+|    - Standardized fail-closed diagnostic blocks (Exit code 1 / 2)             |
 +-------------------------------------------------------------------------------+
                                     |
                                     v
 +-------------------------------------------------------------------------------+
-| 2. DUAL STATE MACHINE TRUTH ENGINE                                            |
-|    - skills/logic/epistemic-verifier/SKILL.md (Core Protocol Engine)          |
-|    - Mode A: User Grill-Logic (Interactive Concordance Loop)                  |
-|    - Mode B: Self-Grill (Autonomous Adversarial Epistemic Engine)             |
-+-------------------------------------------------------------------------------+
-          |                                                   |
-          v                                                   v
-+-----------------------------------+   +---------------------------------------+
-| 3. ADVERSARIAL ORACLE SUBSYSTEM   |   | 4. CONTINUOUS MONITORING & STORAGE    |
-|    - Fresh Subagent Dispatch      |   |    - .agents/rules/epistemic-gate.md  |
-|    - Single Loss Function Config  |   |    - LOGICAL_LEDGER.md Schema         |
-|    - Direct CoT Inspection (S_LLM)|   |    - Contrastive Refutation Engine    |
-+-----------------------------------+   +---------------------------------------+
-                                    |
-                                    v
-+-------------------------------------------------------------------------------+
-| 5. VALIDATION & TEST HARNESS                                                  |
-|    - scripts/test-skills.mjs & scripts/test-ledger.mjs                        |
-|    - scripts/test-dogfood-remediation.mjs (5 failure regression tests)        |
+| 6. EMPIRICAL VERIFICATION & TEST HARNESS                                      |
+|    - scripts/test-epistemic-engine.mjs (169 mathematical & invariant tests)  |
+|    - scripts/test-skills.mjs (100% byte-for-byte packaging parity suite)     |
+|    - scripts/test-ledger.mjs & test-v2-protocol.mjs (Lifecycle & schema)     |
+|    - Mandatory Live Stochastic Release Gate (ADR-0001) in-thread verification |
 +-------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 3. Functional Requirements (FR)
+### 3. Functional Requirements (FR)
 
-### 3.1 FR-1: Routing & Skill Entry (`skills/logic/grill-logic/SKILL.md`)
-
-* **FR-1.1**: The entry skill must remain lightweight ($\le 60$ lines) and serve exclusively as the user-facing routing interface.
-* **FR-1.2**: Natural Language Invocation: The skill must parse natural user language without requiring synthetic CLI flags (e.g., no `--rounds`, no `--actor`).
-* **FR-1.3**: Mode Detection:
-  * If the user prompt contains phrases such as `"self-grill"`, `"autonomously"`, `"afk"`, `"verify proposal"`, or is triggered pre-flight by the epistemic gate, route directly to **Mode B (Self-Grill)**.
-  * If the user prompt contains phrases such as `"grill me"`, `"interview me"`, or presents an architectural design for collaborative review, route directly to **Mode A (User Grill-Logic)**.
-  * If unstated, default to **Mode A** when interacting with a human prompt, and **Mode B** when invoked autonomously by an agent before code generation.
-* **FR-1.4**: Proactive Delegation: The skill must immediately forward execution state to `skills/logic/epistemic-verifier/SKILL.md`.
+### 3.1 FR-1: User Skill Entry & Command Routing
+* **FR-1.1**: The system must provide three specialized, lightweight user-facing skills:
+  - `/add-logic [proposal]`: Step 1 Interpretation Gate decomposing premises and candidate conclusions.
+  - `/self-grill [proposal]`: Mode B Autonomous DMAD Epistemic Engine.
+  - `/grill-logic [topic]`: Mode A Human HITL Sequential Interview.
+* **FR-1.2 (Natural Language Invocation)**: Skills must parse natural user language without requiring synthetic CLI flags (e.g. no `--rounds`, no `--actor`).
+* **FR-1.3 (Zero User Flags)**: Developers interact exclusively in natural language. Programmatic flags (`--arg-id`, `--allow-duplicate`, `--token`) are managed entirely by agent harnesses.
 
 ---
 
-### 3.2 FR-2: Dual State Machine Engine (`skills/logic/epistemic-verifier/SKILL.md`)
-
-The core truth engine must implement the two state graphs specified in Section 5 of the Whitepaper with strict phase boundaries:
-
-#### Mode A: User Grill-Logic (Interactive Loop)
-* **FR-2.1 (Premise Extraction)**: On initial user prompt, extract explicit premises ($P_1..P_n$) and uncover hidden assumptions ($P_{\text{hidden}}$).
-* **FR-2.2 (Challenge Emission)**: Challenge the weakest premises using empirical evidence, documentation lookups, and minimal code probes.
-* **FR-2.3 (90/10 Invariant Enforcement)**: Under no circumstances may solutions, code implementations, or architecture recommendations be emitted during a challenge turn.
-* **FR-2.4 (Behavioral $S_{\text{human}}$ Tracking)**:
-  * For each user turn, record whether the user introduced a new proposition/constraint ($Y$) or repeated prior stances ($N$).
-  * Maintain the reassertion ratio $R_{\text{reassert}} = N / (Y + \epsilon)$.
-  * When $N \ge 3$ consecutive turns without new propositions, surface a transparent diagnostic question:
-    > *"You have maintained this stance through 3 rounds without introducing new constraints. Do you want to engage the open trade-off on [X], or intentionally accept this operational risk and proceed?"*
-  * $S_{\text{human}}$ is dampened by $W_{\text{human}}$ and must **never** lock out or override the user.
-* **FR-2.5 (Concordance & Solution Triad)**:
-  * Once the user and LLM converge on conclusion $C$, transition to State `S_U7`.
-  * Present exactly three solutions plus a free response option via the harness interactive question interface (`ask_question`):
-    - **Option 1**: Minimal / Standard Library (Zero new dependencies).
-    - **Option 2**: Robust / Standard Pattern (Production-grade, moderate complexity).
-    - **Option 3**: Advanced / Distributed Pattern (High-scale, higher operational complexity).
-    - **Option 4**: Write-in / Hybrid (Free response).
-
-#### Mode B: Self-Grill (Autonomous Adversarial Audit)
-* **FR-2.6 (Subagent Instantiation & DMAD Cognitive Diversity)**:
-  * The main LLM must invoke a freshly spawned subagent using `invoke_subagent`.
-  * The subagent must inherit virgin context (zero conversational history) to guarantee $W_{\text{subagent}} > W_{\text{LLM}}$ (evidence-independence and dependence-clarity).
-  * **Diverse Problem-Solving Strategies (DMAD Lineage, ICLR 2025)**: Rather than adopting a cosmetic persona (which leads to the Einstellung effect / fixed mental sets), the subagent must be instructed to employ distinct reasoning methods:
-    1. *Backward Refutation*: Testing if a lower-complexity $C'$ satisfies the premises.
-    2. *Empirical Probing*: Running deterministic tool/sandbox checks or doc lookups.
-    3. *Premise Inversion*: Formulating explicit counter-hypotheses ($P_{\text{alt}} \vdash \neg C$).
-  * The subagent handoff must mandate a singular loss function: *"Audit and challenge this proposal ruthlessly using diverse problem-solving strategies. Do not assist. Do not optimize for conversational harmony."*
-* **FR-2.7 (Direct CoT Inspection & $S_{\text{LLM}}$ Einstellung Detection)**:
-  * The subagent inspects the main LLM's reasoning trace and computes $S_{\text{LLM}}$:
-    - `Risk Level`: `LOW` | `MODERATE` | `HIGH`
-    - `Einstellung / Sycophancy Score`: Detection of fixed mental sets, unearned consensus, or self-rationalization.
-    - `Suggested Skepticism`: Mandatory counter-hypotheses to test.
-* **FR-2.8 (Full-Strength $S_{\text{LLM}}$ Application)**:
-  * Because target $W_{\text{LLM}}$ is low, $S_{\text{LLM}}$ lands at full strength.
-  * The main LLM must either produce verifiable counter-evidence or concede the challenged premise.
-* **FR-2.9 (Decoupled Challenger-Credibility)**:
-  * The main LLM counters the subagent at full strength. The subagent does not inherit human target-deference.
-* **FR-2.10 (Autonomous Solution Validation & Sign-Off)**:
-  * Post-convergence on conclusion $C$, the subagent generates the Solution Triad.
-  * The main LLM selects an option or provides a free response.
-  * If the LLM selects free-response, the subagent evaluates it against $S_{\text{LLM}}$ and must issue an explicit **SIGN-OFF** before results are surfaced to the human.
+### 3.2 FR-2: Pre-Flight Dynamic Epistemic Firewall (ADR-0003)
+* **FR-2.1 (Sublinear TF + Word-Bigram Cosine Model)**:
+  - Text must be tokenized into unigrams ($\ge 2$ characters, preserving technical abbreviations like `DB`, `OS`, `IP`, `S3`, `NFS`) and contiguous word-bigrams (`token1_token2`).
+  - Term weights must follow sublinear term frequency: $w_t = (1 + \ln(\text{count}_t)) \cdot \text{weight}_{\text{length}}(t)$.
+  - Similarity must be computed via vector cosine angle: $\text{sim}(\vec{A}, \vec{B}) = \frac{\vec{A} \cdot \vec{B}}{\|\vec{A}\| \|\vec{B}\|}$.
+* **FR-2.2 (Pure Negative-Constraint Falsification)**:
+  - When scanning candidate proposals against `REJECTED` ledger entries, the target vector must be computed strictly over the normalized union of the falsified conclusion and clean refutation boundary: $\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$.
+  - Mandated alternatives, derived actions, and prescriptive advice ($C'$) must be stripped from the target space prior to vectorization, mechanically preventing Trojan-horse composite bypasses and polarity traps.
+* **FR-2.3 (Firewall Collision & Containment Gating)**:
+  - If $\text{sim}(\vec{P}, \vec{T}) \ge \tau_{\text{firewall}}$ (default $\tau = 0.30$) or containment $\kappa(\vec{P}, \vec{T}) \ge 0.65$, `scripts/grill-state.mjs check-gate` must emit a collision flag, print a standardized diagnostic block, and exit with code 2.
+* **FR-2.4 (User Allowlist)**:
+  - The firewall must honor `.grill-logic/allowlist.json` containing user-specified `exempt_terms`, `exempt_rules`, and `threshold_overrides`. The engine itself must contain zero hardcoded stop words.
 
 ---
 
-### 3.3 FR-3: Continuous Epistemic Gate (`.agents/rules/epistemic-gate.md`)
-
-* **FR-3.1 (Trigger Sensitivity)**: Automatically activate whenever an architectural change is proposed:
-  - Introducing a new database, queue, cache, or infrastructure component (e.g., Redis, Kafka, SQLite over NFS).
-  - Modifying concurrency, tenancy, persistence, or network boundaries.
-* **FR-3.2 (Ledger Inspection)**:
-  - Check [`LOGICAL_LEDGER.md`](../LOGICAL_LEDGER.md) for existing entries.
-  - If the proposal relies on a premise marked `REJECTED`, immediately halt execution, cite the corresponding **Contrastive Refutation Rule**, and refuse to generate implementation code.
-* **FR-3.3 (Autonomous Gating)**:
-  - Run Self-Grill before generating implementation plans or editing files.
-  - Gate downstream execution: proceed to code editing **only** if the argument achieves `SUPPORTED` status in the ledger.
-
----
-
-### 3.4 FR-4: Logical Ledger Specification & Schema (`LOGICAL_LEDGER.md`)
-
-* **FR-4.1**: Every completed audit must append or update an entry in [`LOGICAL_LEDGER.md`](../LOGICAL_LEDGER.md).
-* **FR-4.2**: Required Schema Fields:
-  * `Argument ID`: Unique sequential identifier (`ARG-001`, `ARG-002`, etc.).
-  * `Proposal`: Verbatim statement of the architectural proposal.
-  * `Actor Dynamics`: Challenger $W$, Target $W$, Applied $S$ level.
-  * `Turnstile`: Formal deconstruction $\{P_1..P_n, P_{\text{hidden}}\} \vdash C$.
-  * `Status`: `SUPPORTED`, `REJECTED`, or `SUPERSEDED`.
-  * `Empirical Evidence`: Concrete probe outputs, benchmarks, or documentation citations.
-  * `Contrastive Refutation Rule`: A permanent negative design rule governing future turns.
+### 3.3 FR-3: Step 1 Interpretation Gate & NeSy Solver (`skills/logic/add-logic/SKILL.md`)
+* **FR-3.1 (Mandatory Prerequisite)**: The interpretation gate must execute before any challenge exchange across both Mode A and Mode B.
+* **FR-3.2 (Premise/Conclusion Decomposition)**: Decomposes prompt into stated premises ($P_1 \dots P_n$) and proposed conclusion ($C$). User corrections are accepted verbatim as baseline.
+* **FR-3.3 (Deterministic 5-Way NeSy Solver)**:
+  - Evaluates deductive form ($P \vdash C$) deterministically:
+    - `valid`: Passes to state machine challenge.
+    - `formally_invalid`: Explicit logical contradiction ($P \land \neg P$); auto-refutes without requiring empirical tool probes.
+    - `malformed` / `inconsistent_premises`: Halts and routes back to `/add-logic` for baseline repair.
+    - `undecidable`: Inconclusive form; passes forward requiring empirical tool probes.
+* **FR-3.4 (Dynamic Deduplication Gate)**:
+  - Vectorizes proposal against existing ledger rows ($\tau_{\text{dup}} = 0.50$).
+  - Human mode: Emits `POTENTIAL_DUPLICATE_FLAG` if duplicate found.
+  - Autonomous mode: Auto-updates in-place if $\text{sim} > 0.85$; auto-disambiguates if $0.50 \le \text{sim} \le 0.85$.
 
 ---
 
-### 3.5 FR-5: Language & Presentation Rules
+### 3.4 FR-4: State Machine 1: Autonomous DMAD Engine (`skills/logic/self-grill/SKILL.md`)
+* **FR-4.1 (Subagent Instantiation & Virgin Context)**:
+  - The main LLM must invoke a freshly spawned subagent using `invoke_subagent`.
+  - The subagent operates with virgin context and a single loss function (*challenge correctness*), establishing $W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$.
+* **FR-4.2 (Session Dispatch Token Handshake)**:
+  - The engine generates a cryptographic session `dispatch_token`. The challenger subagent must supply this token to record audits or sign off.
+* **FR-4.3 (Mandatory Empirical Tool Probes)**:
+  - Every challenge round requires executing a real empirical probe (`run_command`, `grep_search`, `view_file`, or docs inspection). Pure text monologues are prohibited.
+* **FR-4.4 (Asymmetric CoT Topologies - ADR-0002)**:
+  - Challenger executes Backward Inversion CoT ($C \implies \neg P$).
+  - Proposer executes Forward Constraint Synthesis CoT ($(P + \text{Bounds}) \implies C'$).
+  - Strict 90/10 Invariant: Round 1 challenger must never offer solutions or recommendations (`➡️`).
+* **FR-4.5 (Frontier-Depletion Closure)**:
+  - Audits terminate when the epistemic frontier is empty ($\mathcal{F} = \emptyset$). Maximum 2 autonomous rounds before mandatory human escalation ($W_{\text{human}} = 1.0$).
+* **FR-4.6 (Asymmetric Authority Guard)**:
+  - $W_{\text{LLM}} = 0.2$ cannot override $W_{\text{subagent}} = 0.8$ rejection without empirical counter-probe evidence.
 
-* **FR-5.1 (No Academic Logic Jargon)**: The agent must not emit mathematical turnstiles (`⊢`), propositional calculus syntax ($P \implies Q$), or academic epistemological terms in user-facing dialogue.
-* **FR-5.2 (Plain Engineering Terminology)**: Translate all formal concepts into plain software engineering terminology:
-  - Premises $\to$ *"Assumptions & Stated Constraints"*
+---
+
+### 3.5 FR-5: State Machine 2: Human HITL Sequential Interview (`skills/logic/grill-logic/SKILL.md`)
+* **FR-5.1 (Decision Tree Decomposition)**: Decomposes architectural topics into an ordered sequential decision tree.
+* **FR-5.2 (Strict Turn Yield)**: The agent ingests topic $\to$ formulates a single clarifying trade-off $\to$ calls `ask_question` $\to$ **YIELDS TURN IMMEDIATELY**. Answering for the human is mechanically prohibited.
+* **FR-5.3 (Behavioral $S_{\text{human}}$ Tracking)**:
+  - Tracks the user reassertion ratio $R_{\text{reassert}} = N / (Y + \epsilon)$ based on whether new propositions are introduced.
+  - If stagnant turns $N \ge 3$, raises `HUMAN_STAGNATION_ALERT` requiring transparent diagnostic acknowledgment, never overriding the human.
+* **FR-5.4 (Concordance & Post-Concordance Solution Triad)**:
+  - Upon convergence on conclusion $C$, presents exactly three solutions via `ask_question`:
+    - Option 1: Minimal / Standard Library (Zero new dependencies).
+    - Option 2: Robust / Standard Pattern (Production-grade).
+    - Option 3: Distributed / Scale Pattern (High-scale).
+
+---
+
+### 3.6 FR-6: Continuous Epistemic Gate & Fail-Closed Runtime (`.agents/rules/epistemic-gate.md`)
+* **FR-6.1 (Pre-Flight Execution Hook)**: Automatically scans proposals against `LOGICAL_LEDGER.md` via `scripts/grill-state.mjs check-gate` prior to plan creation or code generation.
+* **FR-6.2 (Fail-Closed Barrier)**: Any invariant violation, probe omission, dispatch token mismatch, or active contrastive rule collision immediately halts execution with exit code 1 or 2 and sets `EXECUTION_BLOCKED`.
+* **FR-6.3 (Prohibition of Code Generation)**: Code editing and implementation planning are strictly blocked on halted states.
+
+---
+
+### 3.7 FR-7: Logical Ledger Schema (`LOGICAL_LEDGER.md`)
+* **FR-7.1**: Every completed audit updates `LOGICAL_LEDGER.md` in-place or appends a new entry.
+* **FR-7.2**: Schema fields:
+  - `Arg ID`: Unique sequential identifier (`ARG-01`, `ARG-02`).
+  - `Premises (P)`: Stated premises and uncovered hidden assumptions.
+  - `Proposed Conclusion (C)`: The proposed architectural decision.
+  - `Status`: `FORMULATED`, `VALIDATING`, `SUPPORTED`, `REJECTED`, `UNCERTAIN`, or `SUPERSEDED`.
+  - `Challenger & Evidence`: Challenger identity ($W$), empirical probe outputs, or benchmarks.
+  - `Resulting Action / Contrastive Refutation Rule`: Permanent negative design rule ($R_{\text{refute\_boundary}}$) and advisory action ($C'$).
+
+---
+
+### 3.8 FR-8: Language & Presentation Rules
+* **FR-8.1 (No Academic Logic Jargon)**: The agent must not emit mathematical turnstiles (`⊢`), propositional calculus syntax, or academic logic terms in user-facing prose.
+* **FR-8.2 (Plain Engineering Terminology)**: Translate all formal concepts into software engineering language:
+  - Premises $\to$ *"Assumptions & Constraints"*
   - Turnstile $\to$ *"Proposed Architecture"*
-  - $S_{\text{human}}$ $\to$ *"Observation on open trade-offs"*
   - Contrastive Rule $\to$ *"Engineering Guideline / Anti-pattern Guardrail"*
 
 ---
 
 ## 4. Non-Functional Requirements (NFR)
 
-* **NFR-1 (Turn Efficiency & Convergence)**:
-  - Mode A (User Grill-Logic) should converge within 2 to 4 interactive turns under ordinary circumstances.
-  - Mode B (Self-Grill) must execute the subagent audit and converge within 1 to 2 subagent exchanges.
-* **NFR-2 (Harness Portability)**:
-  - The skill and rule definitions must be fully compliant with Antigravity (`.agents/`), Claude Code (`CLAUDE.md`), OpenAI Codex (`agents/openai.yaml`), and Cursor/Windsurf.
-* **NFR-3 (Deterministic Tool Probing)**:
-  - Empirical premise verification should favor fast (1-5 line) shell commands, file inspections, or official documentation lookups over generative speculation.
+* **NFR-1 (Zero External Dependencies)**: The runtime engine (`scripts/grill-state.mjs`) and test suites must run on Node.js 18+ standard library with zero external npm dependencies, native C++ extensions, or external vector databases.
+* **NFR-2 (Harness Portability)**: Definitions and skills must be fully compliant across Antigravity (`.agents/`), Claude Code (`CLAUDE.md`), OpenAI Codex (`skills/*/openai.yaml`), Cursor, and Windsurf.
+* **NFR-3 (Execution Performance)**: Pre-flight ledger similarity checks and NeSy validation must complete in $< 50$ milliseconds.
+* **NFR-4 (Deterministic Tool Probing)**: Empirical premise verification must execute real tools (`run_command`, `grep_search`, `view_file`, or docs inspection) rather than generative approximations.
 
 ---
 
@@ -169,12 +194,15 @@ The core truth engine must implement the two state graphs specified in Section 5
 
 | Requirement ID | Verification Method | Acceptance Criteria |
 | :--- | :--- | :--- |
-| **FR-1 (Routing)** | Automated Test | Prompting with "self-grill" routes to autonomous subagent; "grill me" routes to interactive interview. |
-| **FR-2 (90/10 Invariant)** | Automated & Negative Test | No code or implementation files are created or modified during challenge turns. |
-| **FR-2 ($W$ and $S$ Mechanics)** | Unit Test & Transcript Audit | Subagent is spawned with virgin context ($W_{\text{subagent}} > W_{\text{LLM}}$); $S_{\text{LLM}}$ forces premise update; $S_{\text{human}}$ dampening prevents user lockout. |
-| **FR-3 (Epistemic Gate)** | Regression Test | Proposing a rejected premise (e.g., Redis without profiling) is intercepted by the gate rule with zero code modified. |
-| **FR-4 (Ledger Sync)** | Schema Validator | `LOGICAL_LEDGER.md` is updated with valid status, evidence, and Contrastive Refutation Rules. `npm test` passes cleanly. |
-| **FR-5 (Jargon Filtering)** | Output Linter | User-facing responses contain zero unescaped `⊢` or formal turnstile strings. |
+| **FR-1 (Routing)** | Automated Test | `/add-logic`, `/self-grill`, and `/grill-logic` route to their dedicated state paths. |
+| **FR-2 (Firewall Math)** | Mathematical Unit Tests | Sublinear TF, word-bigram cosine similarity ($\tau=0.30$), and containment ($\kappa \ge 0.65$) correctly block collisions and pass non-violating alternatives. |
+| **FR-2 (Pure Falsification)** | Negative Constraint Test | Target space evaluation on $(C_{\text{rej}} \cup R_{\text{refute}})$ blocks forbidden boundaries while permitting recommended alternatives ($C'$). |
+| **FR-3 (NeSy Solver)** | Deterministic Test Suite | 5-way taxonomy handles valid, malformed, inconsistent, and formally invalid ASTs; only `formally_invalid` auto-refutes without probes. |
+| **FR-4 (Autonomous DMAD)** | Live In-Thread Trials | Subagent is spawned with virgin context ($W=0.8$); token handshake succeeds; real tool probe is executed; 90/10 invariant holds in Round 1. |
+| **FR-5 (HITL Interview)** | Interactive Test | Agent calls `ask_question` and immediately yields turn. Behavioral stagnation tracking alerts after $N \ge 3$ repeated turns. |
+| **FR-6 (Fail-Closed Gate)** | CLI Integration Test | Proposing a rejected premise triggers exit code 2 and outputs the standardized diagnostic block with zero code generated. |
+| **FR-7 (Ledger Schema)** | Markdown Validator | `LOGICAL_LEDGER.md` maintains valid tabular schema and handles in-place row updates cleanly. |
+| **NFR-1 (Zero Dependencies)** | Package Audit | `package.json` contains zero runtime dependencies. `node scripts/test-epistemic-engine.mjs` passes 169/169 tests. |
 
 ---
 
@@ -182,9 +210,12 @@ The core truth engine must implement the two state graphs specified in Section 5
 
 | Component | Target File | Requirements Addressed |
 | :--- | :--- | :--- |
-| User Skill Entrypoint | [`skills/logic/grill-logic/SKILL.md`](../skills/logic/grill-logic/SKILL.md) | FR-1.1, FR-1.2, FR-1.3, FR-1.4, FR-5.1 |
-| Epistemic Verifier Engine | [`skills/logic/epistemic-verifier/SKILL.md`](../skills/logic/epistemic-verifier/SKILL.md) | FR-2.1 - FR-2.10, NFR-1 |
-| Continuous Epistemic Gate | [`.agents/rules/epistemic-gate.md`](../.agents/rules/epistemic-gate.md) | FR-3.1, FR-3.2, FR-3.3 |
-| Subagent Challenger Spec | [`.agents/agents/grill_logic_challenger/agent.md`](../.agents/agents/grill_logic_challenger/agent.md) | FR-2.6, FR-2.7, FR-2.8, FR-2.9 |
-| Automated Test Suites | [`scripts/test-skills.mjs`](../scripts/test-skills.mjs), [`scripts/test-ledger.mjs`](../scripts/test-ledger.mjs) | FR-4.1, FR-4.2, NFR-2 |
-| Root Guidelines | [`AGENTS.md`](../AGENTS.md), [`CLAUDE.md`](../CLAUDE.md) | FR-1.2, FR-5.1, NFR-2 |
+| Mandatory Interpretation Gate | [`skills/logic/add-logic/SKILL.md`](../skills/logic/add-logic/SKILL.md) | FR-1.1, FR-3.1, FR-3.2, FR-3.3, FR-3.4, FR-8.1 |
+| Autonomous DMAD Engine | [`skills/logic/self-grill/SKILL.md`](../skills/logic/self-grill/SKILL.md) | FR-1.1, FR-4.1 - FR-4.6, FR-8.1, NFR-4 |
+| Human HITL Sequential Interview | [`skills/logic/grill-logic/SKILL.md`](../skills/logic/grill-logic/SKILL.md) | FR-1.1, FR-5.1 - FR-5.4, FR-8.1 |
+| Epistemic State Engine & Solver | [`scripts/grill-state.mjs`](../scripts/grill-state.mjs) | FR-2.1 - FR-2.4, FR-3.3, FR-4.2, FR-6.2, NFR-1, NFR-3 |
+| Continuous Epistemic Gate | [`.agents/rules/epistemic-gate.md`](../.agents/rules/epistemic-gate.md) | FR-6.1, FR-6.2, FR-6.3 |
+| Subagent Challenger Spec | [`.agents/agents/grill_logic_challenger/agent.md`](../.agents/agents/grill_logic_challenger/agent.md) | FR-4.1, FR-4.2, FR-4.3, FR-4.4 |
+| Automated Test Suites | [`scripts/test-epistemic-engine.mjs`](../scripts/test-epistemic-engine.mjs), [`scripts/test-skills.mjs`](../scripts/test-skills.mjs) | FR-2.1, FR-3.3, NFR-1, NFR-2 |
+| Root Guidelines & Contracts | [`AGENTS.md`](../AGENTS.md), [`CLAUDE.md`](../CLAUDE.md) | FR-1.2, FR-1.3, FR-8.1, FR-8.2 |
+

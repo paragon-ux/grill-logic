@@ -1,12 +1,35 @@
-# Grill-Logic: Epistemic Truth Maintenance for AI Agents
+# Grill-Logic: Neurosymbolic Epistemic Truth Maintenance for AI Agents
 
-> **Epistemic Truth Maintenance, Neurosymbolic Premise Validation, and Negative-Constraint Firewalls for Real Software Engineering.**
+> **The first neurosymbolic epistemic truth-maintenance firewall for AI coding agents. Mechanically prevents models from building code around physically impossible or logically flawed architectural premises.**
 
-Developing real software with AI coding agents is hard. Standard workflows (GSD, Spec-Driven Development, PRD generators, plan artifacts) suffer from a fatal blindspot: **they conflate procedural consensus with epistemic validity**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Protocol Version](https://img.shields.io/badge/Protocol-v2.2.0-green.svg)](references/grill-logic-whitepaper.md)
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-0%20(Pure%20Stdlib)-brightgreen.svg)](scripts/grill-state.mjs)
+[![Tests Passing](https://img.shields.io/badge/Tests-169%20Passing-success.svg)](scripts/test-epistemic-engine.mjs)
 
-When a user prompt or agent proposal contains an unstated, false assumption (e.g., assuming SQLite WAL mode works safely over NFS, or that database read latency requires an external caching cluster), procedural planners will happily generate 1,000 lines of pristine, well-structured code around a fundamentally broken premise. Both user and agent sign off because the steps look sensible, even though the foundational axiom is physically or logically invalid.
+---
 
-**Grill-Logic v2.2** cleanly separates the **Epistemic Layer (Truth Maintenance)** from the **Procedural Layer (Task Execution)**. It provides a formal, neurosymbolic verification pipeline with mathematical Autonomy Weight ($W$), Skepticism Signals ($S$), deterministic invariant solving, and fail-closed runtime negative constraints.
+## The Problem: The Procedural Blindspot
+
+Developing software with autonomous AI agents (Claude Code, Antigravity, Cursor, Windsurf, Codex) suffers from a fatal blindspot: **they conflate procedural consensus with epistemic validity**.
+
+When a user prompt or agent proposal contains an unstated, false assumption—such as assuming SQLite WAL mode works safely over an NFS share, or that database read latency warrants deploying an external Redis caching cluster—procedural planners (GSD, Spec-Driven Development, PRD generators, plan artifacts) will happily generate 1,000 lines of pristine, well-structured code around a fundamentally broken axiom. Both user and agent sign off because the steps look sensible, even though the foundational premise is physically or logically invalid. Worse, models repeatedly fall back into previously refuted anti-patterns across long multi-turn sessions (*semantic regression*).
+
+## The Solution: Grill-Logic v2.2
+
+**Grill-Logic v2.2** cleanly separates the **Epistemic Layer (Truth Maintenance)** from the **Procedural Layer (Task Execution)**. It introduces a formal, neurosymbolic verification pipeline with mathematical Autonomy Weight ($W$), Skepticism Signals ($S$), deterministic invariant solving, and a fail-closed runtime negative-constraint firewall.
+
+| Capability | Standard Agentic Harness | Grill-Logic v2.2 Epistemic Engine |
+| :--- | :--- | :--- |
+| **Premise Validation** | Blind procedural agreement ("Looks good!") | **Step 1 Interpretation Gate (`/add-logic`)** with 5-way NeSy solver |
+| **Challenger Credibility** | Cosmetic persona prompting (*Einstellung* trap) | **Diverse Multi-Agent Debate (DMAD)** with $W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$ |
+| **Verification Basis** | Unbacked textual hallucination | **Empirical Tool Probes Required** (`run_command`, `grep_search`, `view_file`) |
+| **Solution Pacing** | Premature generation (solutions offered in turn 1) | **Strict 90/10 Invariant**: Solutions gated until post-concordance |
+| **Reasoning Diversity** | Symmetric homogeneous CoT (correlated error) | **Asymmetric CoT (ADR-0002)**: Challenger Refutation vs. Proposer Synthesis |
+| **Memory Firewall** | Unfiltered prompt context (semantic regression) | **Dynamic Vector Firewall (ADR-0003)**: Bag-of-words + bigram cosine ($\tau = 0.30$) |
+| **Negative Constraints** | Rigid static keywords or polarity traps | **Pure Negative Falsification**: Evaluated on $(C_{\text{rejected}} \cup R_{\text{refute\_boundary}})$ |
+| **Developer UX** | Complex synthetic flags (`--allow-dup`, `--rounds`) | **Zero User Flags**: Humans converse naturally; agents manage flags |
+| **Dependencies** | Heavy vector databases, embeddings, C++ bindings | **Zero Dependencies**: 100% Node.js standard library (`fs`, `crypto`, `path`) |
 
 ---
 
@@ -117,7 +140,32 @@ The continuous epistemic gate monitors architectural proposals automatically. Wh
 If an invariant is violated, an empirical probe is omitted, a dispatch token is mismatched, or a proposal matches an active `REJECTED` rule:
 1. The engine (`scripts/grill-state.mjs`) **fails closed immediately** with exit code 1 or 2.
 2. The state is marked `EXECUTION_BLOCKED`.
-3. Procedural code generation is **hard-blocked**. Silent pass-throughs are strictly prohibited.
+3. A standardized, auditable diagnostic block is emitted to `stderr`:
+
+```text
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ ⛔ EPISTEMIC GATE HALT: NEGATIVE_CONSTRAINT_COLLISION                        ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ State:          S_A0A_PREFLIGHT_CHECK                                        ║
+║ Active Machine: AUTONOMOUS_DMAD                                              ║
+║ Actor Context:  Target W=0.2  , Challenger W=0.8                             ║
+║ Skepticism:     Risk=HIGH  , S_human=0.00                                    ║
+╟──────────────────────────────────────────────────────────────────────────────╢
+║ Diagnostic:                                                                  ║
+║   Proposal collides with active REJECTED rule [SYS-INV-01] (similarity:      ║
+║   0.584, threshold: 0.300). Prohibited boundary: POSIX fcntl byte-range     ║
+║   locking over network storage.                                              ║
+╟──────────────────────────────────────────────────────────────────────────────╢
+║ Remediation:                                                                 ║
+║   Proposal violates verified system invariant. To proceed, revise the        ║
+║   architecture away from the refuted pattern, or add the term to             ║
+║   .grill-logic/allowlist.json.                                               ║
+╟──────────────────────────────────────────────────────────────────────────────╢
+║ Execution Gate: BLOCKED (Fail-Closed: Code generation prohibited)            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+Procedural code generation and implementation planning are **strictly prohibited** on blocked states. Silent pass-throughs are non-negotiable failures.
 
 ---
 
@@ -136,11 +184,31 @@ grill-logic/
 │       └── setup/
 │           ├── clear-ledger/       # Automated ledger reset skill (/clear-ledger)
 │           └── setup-grill-logic/  # Automated repository configuration skill
-├── core/
+├── internal/                       # Public evidentiary audit records, dogfooding logs & architectural specs
+│   ├── ADR-0001-LIVE-STOCHASTIC-RELEASE-GATE.md
+│   ├── ADR-0002-ASYMMETRIC-COT-AND-FRONTIER-CLOSURE.md
+│   ├── ADR-0003-NEGATIVE-CONSTRAINT-FALSIFICATION-AND-ANTI-PRESCRIPTIVE-FIREWALL.md
+│   ├── ABLATIONS.md                # Empirical parameter ablation logs
+│   ├── EXPERIMENTS.md              # Empirical trial logs & benchmarks
+│   ├── LOG.md                      # Chronological protocol execution trail
+│   └── revisions/                  # Multi-model independent audit panel reviews
+│       ├── ChatGPT-Critique/       # Independent audit findings (ChatGPT o3-mini)
+│       ├── Claude-Critique/        # Independent audit findings (Claude 3.7 Sonnet)
+│       └── Gemini-Critique/        # Independent audit findings (Gemini 2.5 Pro)
+├── references/
+│   ├── adr/                        # Architectural Decision Records
+│   │   ├── 0001-live-stochastic-release-gate.md
+│   │   ├── 0002-asymmetric-cot-and-frontier-closure.md
+│   │   └── 0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md
+│   ├── grill-logic-whitepaper.md   # Canonical architectural & theoretical whitepaper (v2.2.0)
+│   ├── build-requirements.md      # System specifications and acceptance criteria (v2.2.0)
+│   ├── hooks-setup-guide.md       # Abstract agent lifecycle hook architecture guide
+│   ├── logical-ledger-spec.md     # Registry format, transitions, and contrastive rule conventions (v1.1.0)
+│   └── examples.md                # Concrete case studies (caching leaps, auth invariants, DB sync)
 ├── scripts/
 │   ├── clear-ledger.mjs            # Automated ledger reset and archiving tool
 │   ├── grill-state.mjs             # Standalone epistemic state engine & fail-closed runtime
-│   ├── test-epistemic-engine.mjs   # Comprehensive epistemic invariant & math test suite
+│   ├── test-epistemic-engine.mjs   # Comprehensive epistemic invariant & math test suite (169 tests)
 │   ├── test-ledger.mjs             # Ledger schema & lifecycle test suite
 │   ├── test-skills.mjs             # Skills packaging & byte-for-byte parity test suite
 │   └── test-v2-protocol.mjs        # Protocol invariant & state machine test suite
@@ -152,17 +220,7 @@ grill-logic/
 │   └── setup/
 │       ├── clear-ledger/           # Automated ledger reset skill (/clear-ledger)
 │       └── setup-grill-logic/      # Automated repository configuration skill
-├── references/
-│   ├── adr/
-│   │   ├── 0001-live-stochastic-release-gate.md                   # Mandatory live in-thread trials
-│   │   ├── 0002-asymmetric-cot-and-frontier-closure.md           # Asymmetric reasoning & 90/10 gating
-│   │   └── 0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md # Falsified boundaries & zero-flag UX
-│   ├── grill-logic-whitepaper.md   # Canonical architectural & theoretical whitepaper (v2.2.0)
-│   ├── build-requirements.md      # System specifications and acceptance criteria
-│   ├── hooks-setup-guide.md       # Abstract agent lifecycle hook architecture guide
-│   ├── logical-ledger-spec.md     # Registry format, transitions, and contrastive rule conventions (v1.1.0)
-│   └── examples.md                # Concrete case studies (caching leaps, auth invariants, DB sync)
-├── .gitignore                      # Clean repository ignores
+├── .gitignore                      # Clean repository ignores (un-ignores internal/)
 ├── AGENTS.md                       # Operational guidelines for AI coding agents (all harnesses)
 ├── CLAUDE.md                       # Dedicated developer guide for Claude Code
 ├── LICENSE                         # MIT License
