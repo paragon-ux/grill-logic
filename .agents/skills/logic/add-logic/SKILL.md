@@ -41,7 +41,7 @@ I have decomposed your proposal into the following baseline logical set:
 • Premise 1 (P1): [Explicit requirement or constraint]
 • Premise 2 (P2): [Explicit requirement or constraint]
 • Hidden Premise (P_hidden): [Latent assumption]
-⊢ Proposed Conclusion (C): [Proposed architectural decision]
+• Proposed Architecture (Conclusion C): [Proposed architectural decision]
 
 Does this accurately capture what you are proposing? 
 (You may confirm or provide verbatim corrections).

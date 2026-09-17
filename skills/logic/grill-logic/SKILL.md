@@ -61,7 +61,7 @@ Before mapping decision tree branches, ensure the baseline topic is formulated i
 - **If unformulated**: Execute `/add-logic [topic]`. Decompose premises and proposed conclusion, confirm baseline with user verbatim, and commit as `FORMULATED`.
 - **Deterministic Validation**: Run `node scripts/grill-state.mjs validate-nesy --payload '<JSON>'`. Only proceed to the interview if structurally `valid`.
 
-### Step 1: Initialize Session (S_U0_INIT)
+### Step 1: Initialize Session (S_U1_PREMISE_ISOLATION)
 Run the state engine with the design topic:
 ```bash
 node scripts/grill-state.mjs init --machine human --input "<topic>"

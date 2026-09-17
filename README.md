@@ -21,9 +21,9 @@ When a user prompt or agent proposal contains an unstated, false assumption—su
 
 | Capability | Standard Agentic Harness | Grill-Logic v2.2 Epistemic Engine |
 | :--- | :--- | :--- |
-| **Premise Validation** | Blind procedural agreement ("Looks good!") | **Step 1 Interpretation Gate (`/add-logic`)** with 5-way NeSy solver |
-| **Challenger Credibility** | Cosmetic persona prompting (*Einstellung* trap) | **Diverse Multi-Agent Debate (DMAD)** with $W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$ |
-| **Verification Basis** | Unbacked textual hallucination | **Empirical Tool Probes Required** (`run_command`, `grep_search`, `view_file`) |
+| **Premise Validation** | Single-agent ungrounded agreement | **Step 1 Interpretation Gate (`/add-logic`)** with 5-way NeSy solver |
+| **Challenger Credibility** | Static persona prompting (*Einstellung* trap) | **Diverse Multi-Agent Debate (DMAD)** with $W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$ |
+| **Verification Basis** | Generative assertion without tool verification | **Empirical Tool Probes Required** (`run_command`, `grep_search`, `view_file`) |
 | **Solution Pacing** | Premature generation (solutions offered in turn 1) | **Strict 90/10 Invariant**: Solutions gated until post-concordance |
 | **Reasoning Diversity** | Symmetric homogeneous CoT (correlated error) | **Asymmetric CoT (ADR-0002)**: Challenger Refutation vs. Proposer Synthesis |
 | **Memory Firewall** | Unfiltered prompt context (semantic regression) | **Dynamic Vector Firewall (ADR-0003)**: Bag-of-words + bigram cosine ($\tau = 0.30$) |
@@ -63,7 +63,7 @@ The prompt-driven setup skill will:
 - Install `.agents/rules/epistemic-gate.md` for hands-free continuous premise verification and pre-flight negative constraint checks.
 - Register the Grill-Logic protocol in your existing `CLAUDE.md` and/or `AGENTS.md`.
 
-### 3. Bam. Ready to roll.
+### 3. Verify Architectural Proposals
 
 The continuous epistemic gate monitors architectural proposals automatically. When proposing designs:
 1. Run `/add-logic [proposal]` to formulate premises and validate deductive form.
@@ -110,10 +110,15 @@ The continuous epistemic gate monitors architectural proposals automatically. Wh
       • Fail-Closed: Blocks on any error              • Fail-Closed: Blocks on any error
 ```
 
+### Pre-Flight: Negative Constraint Firewall (`check-gate`)
+* **Zero-Turn Interception**: Intercepts architectural proposals before task planning or code generation begins.
+* **Pure Negative Falsification (ADR-0003)**: Evaluates semantic similarity strictly against the normalized conjunction of refuted conclusions and failure boundaries ($\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$).
+* **Fail-Closed**: Blocks execution immediately (exit code 1) if cosine similarity exceeds threshold ($\tau = 0.30$), preventing semantic regression into known anti-patterns.
+
 ### Step 1: Mandatory Interpretation Gate (`/add-logic [proposal]`)
 * **Core Contract**: Mandatory prerequisite preceding all challenge exchanges.
 * **Decomposition**: Isolate stated facts ($P_1 \dots P_n$) and candidate conclusion ($C$). User corrections are accepted verbatim as baseline.
-* **Deterministic NeSy Validation**: Evaluates formal structure ($P \vdash C$) using a 5-way taxonomy (`valid`, `malformed`, `inconsistent_premises`, `undecidable`, `formally_invalid`). Only `formally_invalid` auto-refutes without probes.
+* **Deterministic NeSy Validation**: Evaluates formal argument structure (verifying whether conclusions follow logically from stated premises) using a 5-way taxonomy (`valid`, `malformed`, `inconsistent_premises`, `undecidable`, `formally_invalid`). Only `formally_invalid` auto-refutes without probes.
 * **Dynamic Deduplication Gate**: Vectorizes proposal against existing ledger rows ($\tau_{\text{dup}} = 0.50$).
   - In Human mode: emits `POTENTIAL_DUPLICATE_FLAG` to prevent redundant rows.
   - In Autonomous mode: auto-updates in-place if $\text{sim} > 0.85$, auto-disambiguates if $0.50 \le \text{sim} \le 0.85$.
@@ -185,9 +190,6 @@ grill-logic/
 │           ├── clear-ledger/       # Automated ledger reset skill (/clear-ledger)
 │           └── setup-grill-logic/  # Automated repository configuration skill
 ├── internal/                       # Public evidentiary audit records, dogfooding logs & architectural specs
-│   ├── ADR-0001-LIVE-STOCHASTIC-RELEASE-GATE.md
-│   ├── ADR-0002-ASYMMETRIC-COT-AND-FRONTIER-CLOSURE.md
-│   ├── ADR-0003-NEGATIVE-CONSTRAINT-FALSIFICATION-AND-ANTI-PRESCRIPTIVE-FIREWALL.md
 │   ├── ABLATIONS.md                # Empirical parameter ablation logs
 │   ├── EXPERIMENTS.md              # Empirical trial logs & benchmarks
 │   ├── LOG.md                      # Chronological protocol execution trail
@@ -237,7 +239,7 @@ Grill-Logic synthesizes breakthroughs across cognitive science, multi-agent deba
 
 * **Diverse Multi-Agent Debate (DMAD, ICLR 2025)**: Proves that cosmetic persona assignment traps models in the *Einstellung effect* (fixed mental sets). Grill-Logic equips adversarial subagents with distinct problem-solving strategies (backward refutation, empirical probing, premise inversion) to break cognitive fixations.
 * **Autonomy Weight ($W$) & Skepticism Signal ($S$)**: Decouples challenger-credibility from target-deference ($W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$), applying $S_{\text{LLM}}$ at full strength against the main model while preserving sovereign developer authority ($W_{\text{human}} = 1.0$).
-* **The 90/10 Invariant**: Gating solution generation until after premise concordance is reached, preventing premature solution offering.
+* **The 90/10 Invariant**: Gates solution generation until after premise concordance is reached, preventing premature solution synthesis.
 * **Mandatory Live Stochastic Release Gate (ADR-0001)**: Mandates live, in-thread autonomous verification trials with genuine tool probes and token handshakes prior to any release or version tag.
-* **Asymmetric CoT & Frontier-Depletion Closure (ADR-0002)**: Enforces orthogonal reasoning paths (Challenger Refutation $C \implies \neg P$ vs. Proposer Constraint-Satisfaction $(P + \text{Bounds}) \implies C'$) to prevent correlated errors across homogeneous LLMs. Debates terminate when the epistemic frontier is empty ($\mathcal{F} = \emptyset$).
-* **Pure Negative-Constraint Falsification & Zero-Flag Contract (ADR-0003)**: Evaluates semantic similarity strictly against the normalized conjunction of the falsified conclusion and prohibited failure boundary ($\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$) using pure sublinear TF + word-bigram cosine similarity ($\tau = 0.30$). Eliminates composite Trojan-horse bypasses and ensures developers interact purely via natural language while agents manage programmatic flags.
+* **Asymmetric CoT & Frontier-Depletion Closure (ADR-0002)**: Enforces orthogonal reasoning paths (Challenger Backward Inversion vs. Proposer Forward Constraint Synthesis) to prevent correlated errors across homogeneous LLMs. Debates terminate when all open contradictions and untested assumptions are resolved.
+* **Pure Negative-Constraint Falsification & Zero-Flag Contract (ADR-0003)**: Evaluates semantic similarity strictly against the normalized conjunction of the falsified conclusion and prohibited failure boundary (`Target Space = C_rejected ∪ R_refute_boundary`) using pure sublinear term-frequency and bigram cosine similarity ($\tau = 0.30$). Eliminates composite Trojan-horse bypasses and ensures developers interact purely via natural language while agents manage programmatic flags.

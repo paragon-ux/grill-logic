@@ -6,7 +6,7 @@ This ledger acts as a persistent truth-maintenance registry and runtime **negati
 
 ## Active Decision Registry
 
-| Arg ID | Premises ($P$) | Proposed Conclusion ($C$) | Status | Challenger & Evidence | Resulting Action / Contrastive Refutation Rule |
+| Arg ID | Premises (P) | Proposed Conclusion (C) | Status | Challenger & Evidence | Resulting Action / Contrastive Refutation Rule |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 
-*(No active decisions recorded yet. Run `/grill-logic [proposal]` or let the continuous epistemic gate record verified premises and contrastive refutation rules here.)*
+*(No active decisions recorded yet. Run `/add-logic [proposal]` or `/grill-logic [topic]` or let the continuous epistemic gate record verified premises and contrastive refutation rules here.)*

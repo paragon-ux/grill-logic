@@ -12,10 +12,10 @@ This ledger acts as a persistent truth-maintenance registry and runtime **negati
 
 ## Active Decision Registry
 
-| Arg ID | Premises ($P$) | Proposed Conclusion ($C$) | Status | Challenger & Evidence | Resulting Action / Contrastive Refutation Rule |
+| Arg ID | Premises (P) | Proposed Conclusion (C) | Status | Challenger & Evidence | Resulting Action / Contrastive Refutation Rule |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 
-*(No active decisions recorded yet. Run \`/grill-logic [proposal]\` or let the continuous epistemic gate record verified premises and contrastive refutation rules here.)*
+*(No active decisions recorded yet. Run \`/add-logic [proposal]\` or \`/grill-logic [topic]\` or let the continuous epistemic gate record verified premises and contrastive refutation rules here.)*
 `;
 
 function parseTableRows(text) {
@@ -31,27 +31,23 @@ function parseTableRows(text) {
       .split("|")
       .slice(1, -1)
       .map((c) => c.trim());
-    if (cells.length >= 6) {
-      rows.push(line);
-    }
+    if (cells.length < 6) continue;
+    rows.push(line);
   }
   return rows;
 }
 
-function clearLedger() {
-  const args = process.argv.slice(2);
-  const noArchive = args.includes("--no-archive") || args.includes("--force");
-
-  console.log("==> Grill-Logic: Clearing Logical Ledger...");
+export function clearLedger(noArchive = false) {
+  console.log(`==> Resetting ${LEDGER_PATH}...`);
 
   if (!fs.existsSync(LEDGER_PATH)) {
     fs.writeFileSync(LEDGER_PATH, CLEAN_TEMPLATE, "utf8");
-    console.log(`  ✓ Created clean ${LEDGER_PATH}`);
+    console.log(`  ✓ Initialized empty ${LEDGER_PATH}`);
     return;
   }
 
-  const currentContent = fs.readFileSync(LEDGER_PATH, "utf8").replace(/^\uFEFF/, "");
-  const rows = parseTableRows(currentContent);
+  const content = fs.readFileSync(LEDGER_PATH, "utf8").replace(/^\uFEFF/, "");
+  const rows = parseTableRows(content);
 
   if (rows.length === 0) {
     fs.writeFileSync(LEDGER_PATH, CLEAN_TEMPLATE, "utf8");
@@ -61,7 +57,7 @@ function clearLedger() {
 
   if (!noArchive) {
     const timestamp = new Date().toISOString();
-    const archiveHeader = `\n\n## Archived Entries (${timestamp})\n\n| Arg ID | Premises ($P$) | Proposed Conclusion ($C$) | Status | Challenger & Evidence | Resulting Action / Contrastive Refutation Rule |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+    const archiveHeader = `\n\n## Archived Entries (${timestamp})\n\n| Arg ID | Premises (P) | Proposed Conclusion (C) | Status | Challenger & Evidence | Resulting Action / Contrastive Refutation Rule |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
     const archiveBody = rows.join("\n") + "\n";
 
     if (!fs.existsSync(ARCHIVE_PATH)) {
@@ -79,4 +75,8 @@ function clearLedger() {
   console.log(`  ✓ ${LEDGER_PATH} has been cleared to a fresh, publication-ready state.`);
 }
 
-clearLedger();
+if (process.argv[1] && (process.argv[1].endsWith("clear-ledger.mjs") || process.argv[1].includes("clear-ledger"))) {
+  const args = process.argv.slice(2);
+  const noArchive = args.includes("--no-archive") || args.includes("--force") || args.includes("reset-only");
+  clearLedger(noArchive);
+}

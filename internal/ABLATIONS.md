@@ -1,5 +1,9 @@
 # Architectural Ablation Study: Grill-Logic
 
+> [!NOTE]
+> **Historical Context (v1.0 Exploratory Record)**:
+> This ablation document captures early v1.0 architectural explorations that cut speculative 10-skill micro-abstractions in favor of a lean monolithic design. In v2.0 through v2.2, production engineering requirements formalized canonical ADRs (ADR-0001, ADR-0002, ADR-0003), dedicated skills (`add-logic`, `grill-logic`, `self-grill`, `clear-ledger`, `setup-grill-logic`), and the standalone state engine (`scripts/grill-state.mjs`). This document is preserved as an evidentiary record of early architectural trade-offs.
+
 This document formalizes the architectural progression and ablation analysis for **Grill-Logic**. It documents why a lean, unified epistemic skill was chosen over a fragmented multi-skill framework, isolating components that provide genuine truth-maintenance value from those that introduce operational friction.
 
 ---

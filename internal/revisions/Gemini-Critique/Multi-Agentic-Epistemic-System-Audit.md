@@ -1,22 +1,3 @@
-Ran command: `git status`
-Ran command: `git diff --stat`
-Ran command: `git diff --no-index skills/logic/add-logic/SKILL.md .agents/skills/logic/add-logic/SKILL.md`
-Viewed grill-state.mjs:230-310
-Viewed grill-state.mjs:360-460
-Viewed grill-state.mjs:461-510
-Viewed grill-state.mjs:1050-1120
-Invoked subagent
-
-I have launched the 3 independent audit subagents concurrently:
-1. **Adversarial Functionality Auditor** (`a5f07b73-db05-4292-bfdb-8b481b9af3dc`): Stress-testing the polarity trap, single-line alternative extraction, allow-list term filtering, and in-place row replacement under adversarial edge cases.
-2. **UX and Developer Experience Auditor** (`28c476e3-70a2-4f8f-9804-c28843567f33`): Auditing CLI ergonomics, diagnostic block readability, actionable remediations, allowlist schema maintainability, and ledger presentation.
-3. **Systems Code Quality Auditor** (`a0d1677d-cccc-45bf-afee-6f3a39a0c3f2`): Reviewing mathematical stability, regex security, ReDoS risks, performance bounds, test coverage depth, and packaging mirror parity.
-
-Waiting for all three review agents to complete their independent assessments and report their findings.
-
-Found 5 subagents
-Found 5 subagents
-
 # Multi-Agent Epistemic & Systems Audit: Dynamic Epistemic Firewall & Deduplication Engine
 
 **Audit Evaluation Target**: Resolution of Prior Audit Findings & Current Working Tree Implementation  
@@ -44,7 +25,7 @@ Found 5 subagents
 *Authored by: Adversarial Epistemic Auditor (`a5f07b73-db05-4292-bfdb-8b481b9af3dc`)*
 
 ### 1. Polarity Trap & Asymmetric Scoring Stress-Testing
-The polarity resolution engine in [`scripts/grill-state.mjs`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L423,L474) enforces:
+The polarity resolution engine in [`scripts/grill-state.mjs`](../../../scripts/grill-state.mjs#L423,L474) enforces:
 ```javascript
 const adoptsAlternative = (scoreAlt >= 0.5) || (scoreAlt >= scoreReject && scoreAlt > 0.1);
 ```
@@ -68,7 +49,7 @@ const adoptsAlternative = (scoreAlt >= 0.5) || (scoreAlt >= scoreReject && score
   - **Result**: $\text{Score}_{\text{reject}} = 0.352$, $\text{Score}_{\text{alt}} = 0.166$. Because $\text{Score}_{\text{reject}} \ge 0.25$ and $\text{Score}_{\text{alt}} < \text{Score}_{\text{reject}}$, a valid PostgreSQL deployment was falsely blocked under `SYS-INV-01`.
 
 ### 2. Delimiter Parsing in Ledger Refutation Rules
-In [`scripts/grill-state.mjs`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L388):
+In [`scripts/grill-state.mjs`](../../../scripts/grill-state.mjs#L388):
 ```javascript
 const altMatch = ruleCellRaw.match(/(?:<br>|\n|\s+)?(?:\*\*)?(?:mandated alternative|derived action|alternative)(?:\*\*)?:\s*(.+)$/i);
 ```
@@ -82,7 +63,7 @@ const altMatch = ruleCellRaw.match(/(?:<br>|\n|\s+)?(?:\*\*)?(?:mandated alterna
 
 ### 4. In-Place Row Replacement in `/add-logic`
 - **Row Integrity**: `node scripts/grill-state.mjs add-logic --arg-id ARG-01 ...` updates row `**ARG-01**` in-place, preserving exactly 6 columns, escaping unescaped pipes (`\|`), and preventing duplicate `ARG-02` creation.
-- **Critical Regex Injection**: In [`scripts/grill-state.mjs:1096`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L1096):
+- **Critical Regex Injection**: In [`scripts/grill-state.mjs:1096`](../../../scripts/grill-state.mjs#L1096):
   ```javascript
   const rowRegex = new RegExp(`\\|\\s*\\*\\*${argId}\\*\\*\\s*\\|[^\\n]*`, 'g');
   ```
@@ -116,9 +97,9 @@ const altMatch = ruleCellRaw.match(/(?:<br>|\n|\s+)?(?:\*\*)?(?:mandated alterna
 - **Missing Scaffolding**: There is no command to generate an initial `allowlist.json` template.
 
 ### 4. Developer Documentation Parity & State Contamination Bug
-- **Documentation Parity**: High alignment between [`.agents/rules/epistemic-gate.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/.agents/rules/epistemic-gate.md), [`skills/logic/add-logic/SKILL.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/add-logic/SKILL.md), and state CLI operations.
+- **Documentation Parity**: High alignment between [`.agents/rules/epistemic-gate.md`](../../../.agents/rules/epistemic-gate.md), [`skills/logic/add-logic/SKILL.md`](../../../skills/logic/add-logic/SKILL.md), and state CLI operations.
 - **Critical State Contamination Discovered in `cmdInit`**:
-  In [`scripts/grill-state.mjs:515`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L515):
+  In [`scripts/grill-state.mjs:515`](../../../scripts/grill-state.mjs#L515):
   ```javascript
   const isMatchingSession = existingState && (
     ...
@@ -159,7 +140,7 @@ const altMatch = ruleCellRaw.match(/(?:<br>|\n|\s+)?(?:\*\*)?(?:mandated alterna
 
 ### Tier 1: Critical Security & Epistemic Correctness (P0)
 
-1. **Escape Regex in `rowRegex` & Add Case-Insensitivity** ([`scripts/grill-state.mjs:1096`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L1096)):
+1. **Escape Regex in `rowRegex` & Add Case-Insensitivity** ([`scripts/grill-state.mjs:1096`](../../../scripts/grill-state.mjs#L1096)):
    ```javascript
    function escapeRegExp(string) {
      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -167,18 +148,18 @@ const altMatch = ruleCellRaw.match(/(?:<br>|\n|\s+)?(?:\*\*)?(?:mandated alterna
    const safeArgId = escapeRegExp(argId);
    const rowRegex = new RegExp(`\\|\\s*\\*\\*${safeArgId}\\*\\*\\s*\\|[^\\n]*`, 'gi');
    ```
-2. **Include Period in `tokenize`** ([`scripts/grill-state.mjs:222`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L222)):
+2. **Include Period in `tokenize`** ([`scripts/grill-state.mjs:222`](../../../scripts/grill-state.mjs#L222)):
    ```javascript
    const cleaned = text
      .replace(/[*_#`~|\\\[\]{}()<>:;,?!=/.]/g, ' ')
      .replace(/['"]/g, '');
    ```
-3. **Fix Polarity Guard Relative Dominance** ([`scripts/grill-state.mjs:423,474`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L423,L474)):
+3. **Fix Polarity Guard Relative Dominance** ([`scripts/grill-state.mjs:423,474`](../../../scripts/grill-state.mjs#L423,L474)):
    Remove the unconditional `scoreAlt >= 0.5` bypass to ensure composite proposals cannot bypass the firewall:
    ```javascript
    const adoptsAlternative = (scoreAlt > scoreReject && scoreAlt >= 0.25) || (scoreAlt >= 0.5 && scoreReject < 0.25);
    ```
-4. **Fix State Contamination in `cmdInit`** ([`scripts/grill-state.mjs:515`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L515)):
+4. **Fix State Contamination in `cmdInit`** ([`scripts/grill-state.mjs:515`](../../../scripts/grill-state.mjs#L515)):
    Remove `(!explicitArgId && !existingState.input_text)` from the matching session predicate:
    ```javascript
    const isMatchingSession = existingState && (
@@ -188,14 +169,14 @@ const altMatch = ruleCellRaw.match(/(?:<br>|\n|\s+)?(?:\*\*)?(?:mandated alterna
      (existingState.conclusion && existingState.conclusion === input)
    );
    ```
-5. **Guard `threshold_overrides: null` in `loadUserAllowlist`** ([`scripts/grill-state.mjs:300`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L300)):
+5. **Guard `threshold_overrides: null` in `loadUserAllowlist`** ([`scripts/grill-state.mjs:300`](../../../scripts/grill-state.mjs#L300)):
    ```javascript
    threshold_overrides: (data.threshold_overrides && typeof data.threshold_overrides === 'object') ? data.threshold_overrides : {}
    ```
 
 ### Tier 2: Ergonomics, Delimiters & Mirror Parity (P1)
 
-6. **Prioritize Specific Delimiters for In-Line Refutation Rules** ([`scripts/grill-state.mjs:388`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L388)):
+6. **Prioritize Specific Delimiters for In-Line Refutation Rules** ([`scripts/grill-state.mjs:388`](../../../scripts/grill-state.mjs#L388)):
    ```javascript
    const altMatch = ruleCellRaw.match(/(?:<br>|\n|\s+)(?:\*\*)?(?:mandated alternative|derived action)(?:\*\*)?:\s*(.+)$/i) ||
                     ruleCellRaw.match(/(?:<br>|\n|\s+)(?:\*\*)?alternative(?:\*\*)?:\s*(.+)$/i);

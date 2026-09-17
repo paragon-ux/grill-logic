@@ -2,7 +2,7 @@
 name: clear-ledger
 description: Clear and reset the project Logical Ledger (LOGICAL_LEDGER.md) to a fresh initialized state, archiving prior decision entries to LOGICAL_LEDGER.archive.md.
 disable-model-invocation: true
-argument-hint: "[--no-archive | --force]"
+argument-hint: "[archive (default) | reset-only]"
 ---
 
 # Clear Ledger
@@ -21,8 +21,8 @@ Run via slash command or conversational request:
 # Default: Archives existing entries and resets LOGICAL_LEDGER.md
 /clear-ledger
 
-# Without archiving (wipe cleanly):
-/clear-ledger --no-archive
+# Reset without archiving:
+/clear-ledger reset-only
 ```
 
 Or execute directly from the terminal:

@@ -1,56 +1,17 @@
-Searched for files: *revisions*
-Listed directory revisions
-Searched for files: *
-Listed directory adr
-Ran command: `git log -n 5 --oneline; git status`
-Ran command: `npm test`
-Viewed Implementation-Plan-Audit.md:1-100
-Viewed task-693.log:1-170
-Viewed task-693.log:171-173
-Viewed test-epistemic-engine.mjs:500-576
-Viewed task-693.log:170-220
-Viewed task-693.log:220-234
-Ran command: `npm test`
-Viewed C:\Users\USER\Desktop\Frameworks\test-grill-logic\v2\package.json
-Listed directory v2
-Ran command: `node scripts/test-skills.mjs; node scripts/test-epistemic-engine.mjs`
-Viewed 0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md:1-100
-Viewed 0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md:100-179
-Viewed grill-state.mjs:360-460
-Viewed grill-state.mjs:470-520
-Viewed grill-state.mjs:1070-1160
-Viewed grill-state.mjs:1680-1760
-Viewed grill-state.mjs:1760-1818
-Viewed grill-state.mjs:1400-1440
-Viewed grill-state.mjs:310-355
-Viewed grill-state.mjs:220-250
-Viewed SKILL.md:1-100
-Viewed SKILL.md:1-90
-Viewed SKILL.md:50-90
-Viewed test-skills.mjs:1-100
-Ran command: `git diff --stat`
-Ran command: `git diff --no-index skills/logic/grill-logic/SKILL.md .agents/skills/logic/grill-logic/SKILL.md; git diff --no-index skills/logic/self-grill/SKILL.md .agents/skills/logic/self-grill/SKILL.md`
-Ran command: `git -C "C:\Users\USER\Desktop\Frameworks\grill-logic" status --short; git -C "C:\Users\USER\Desktop\Frameworks\test-grill-logic\v2" status --short`
-Viewed 0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md:1-20
-Ran command: `node scripts/test-skills.mjs`
-Viewed grill-state.mjs:535-580
-Viewed AGENTS.md:60-90
-Viewed epistemic-gate.md:1-40
-
 # Independent Epistemic & Systems Audit (Audit 3): Resolution Verification of Prior Findings
 
 **Target Artifact**: Dynamic Epistemic Firewall, ADR-0003 & Zero-Flag Contract Walkthrough  
 **Prior Audits Evaluated**:
-1. *Multi-Agentic Epistemic System Audit* ([`internal/revisions/Gemini-Critique/Multi-Agentic-Epistemic-System-Audit.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/internal/revisions/Gemini-Critique/Multi-Agentic-Epistemic-System-Audit.md))
-2. *Implementation Plan & ADR-0003 Architectural Critique* ([`internal/revisions/Gemini-Critique/Implementation-Plan-Audit.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/internal/revisions/Gemini-Critique/Implementation-Plan-Audit.md))  
-**Target Codebase & Mirror**: Primary repository ([`grill-logic`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic)) & Mirror workspace ([`test-grill-logic/v2`](file:///C:/Users/USER/Desktop/Frameworks/test-grill-logic/v2))  
-**Verified Invariants**: [Whitepaper v2.2.0](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/grill-logic-whitepaper.md), [Logical Ledger Spec v1.1.0](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/logical-ledger-spec.md), [ADR-0001](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0001-live-stochastic-release-gate.md), [ADR-0002](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0002-asymmetric-cot-and-frontier-closure.md), [ADR-0003](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md)
+1. *Multi-Agentic Epistemic System Audit* ([`internal/revisions/Gemini-Critique/Multi-Agentic-Epistemic-System-Audit.md`](Multi-Agentic-Epistemic-System-Audit.md))
+2. *Implementation Plan & ADR-0003 Architectural Critique* ([`internal/revisions/Gemini-Critique/Implementation-Plan-Audit.md`](Implementation-Plan-Audit.md))  
+**Target Codebase**: Primary repository (`grill-logic`)  
+**Verified Invariants**: [Whitepaper v2.2.0](../../references/grill-logic-whitepaper.md), [Logical Ledger Spec v1.1.0](../../references/logical-ledger-spec.md), [ADR-0001](../../references/adr/0001-live-stochastic-release-gate.md), [ADR-0002](../../references/adr/0002-asymmetric-cot-and-frontier-closure.md), [ADR-0003](../../references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md)
 
 ---
 
 ## Executive Scorecard & Audit Verdict
 
-A rigorous, line-by-line inspection of [`scripts/grill-state.mjs`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs), [`references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md), the 12 mirrored skill specifications in `skills/` and `.agents/skills/`, and the test suites across both repositories was conducted.
+A rigorous, line-by-line inspection of [`scripts/grill-state.mjs`](../../../scripts/grill-state.mjs), [`references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`](../../../references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md), the 12 mirrored skill specifications in `skills/` and `.agents/skills/`, and the test suites was conducted.
 
 **Audit Verdict**: **100% COMPLETE RESOLUTION / ALL INVARIANTS SATISFIED**.
 
@@ -79,11 +40,11 @@ Every architectural flaw, mathematical imbalance, autonomous deadlock risk, and 
 ## Detailed Section-by-Section Audit
 
 ### 1. Epistemic Invariants & ADR-0003 Implementation
-*File Anchors: [`references/adr/0003-...md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md), [`scripts/grill-state.mjs:414-453`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L414-L453)*
+*File Anchors: [`references/adr/0003-...md`](../../../references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md), [`scripts/grill-state.mjs:414-453`](../../../scripts/grill-state.mjs#L414-L453)*
 
 #### A. Elimination of Alternative Extraction & Pure Negative Falsification
 - **Audit Verification**:
-  In [`scripts/grill-state.mjs`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L414), all variables and heuristics associated with alternative extraction (`altVec`, `simAlt`, `contAlt`, `scoreAlt`, `adoptsAlternative`) have been permanently excised.
+  In [`scripts/grill-state.mjs`](../../../scripts/grill-state.mjs#L414), all variables and heuristics associated with alternative extraction (`altVec`, `simAlt`, `contAlt`, `scoreAlt`, `adoptsAlternative`) have been permanently excised.
 - **Epistemic Invariant**:
   The firewall operates strictly on negative constraints. A proposal is evaluated solely on whether it collides with empirically refuted failure boundaries.
 - **Empirical Test Verification**:
@@ -93,7 +54,7 @@ Every architectural flaw, mathematical imbalance, autonomous deadlock risk, and 
 
 #### B. Falsified Boundary Normalization ($\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$)
 - **Audit Verification**:
-  In [`scripts/grill-state.mjs:418-426`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L418-L426):
+  In [`scripts/grill-state.mjs:418-426`](../../../scripts/grill-state.mjs#L418-L426):
   ```javascript
   const cleanRuleBoundary = ruleCellRaw
     .replace(/(?:<br>|\n|\s+)(?:\*\*)?(?:mandated alternative|derived action|alternative)(?:\*\*)?:.+$/i, '')
@@ -121,7 +82,7 @@ Every architectural flaw, mathematical imbalance, autonomous deadlock risk, and 
 ---
 
 ### 2. Mathematical Substrate & Threshold Calibration
-*File Anchors: [`scripts/grill-state.mjs:389-443`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L389-L443)*
+*File Anchors: [`scripts/grill-state.mjs:389-443`](../../../scripts/grill-state.mjs#L389-L443)*
 
 #### A. Recalibrated Firewall Threshold ($\tau_{\text{firewall}} = 0.30$)
 - In line 390, `tauFirewall` default is calibrated to `0.30` (up from `0.25`), perfectly suited for normalized boundary vectors ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$).
@@ -143,11 +104,11 @@ Every architectural flaw, mathematical imbalance, autonomous deadlock risk, and 
 ---
 
 ### 3. Zero-Flag User Contract & Autonomous Deduplication
-*File Anchors: [`skills/logic/add-logic/SKILL.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/add-logic/SKILL.md), [`skills/logic/self-grill/SKILL.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/self-grill/SKILL.md), [`scripts/grill-state.mjs:1104-1119`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L1104-L1119)*
+*File Anchors: [`skills/logic/add-logic/SKILL.md`](../../../skills/logic/add-logic/SKILL.md), [`skills/logic/self-grill/SKILL.md`](../../../skills/logic/self-grill/SKILL.md), [`scripts/grill-state.mjs:1104-1119`](../../../scripts/grill-state.mjs#L1104-L1119)*
 
 #### A. Headless Autonomous Deduplication Policy (`/self-grill`)
 - **Audit Verification**:
-  In [`cmdAddLogic`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L1104-L1111):
+  In [`cmdAddLogic`](../../../scripts/grill-state.mjs#L1104-L1111):
   ```javascript
   if (activeMachine === 'AUTONOMOUS_DMAD') {
     if (dup.similarity > 0.85) {
@@ -163,19 +124,19 @@ Every architectural flaw, mathematical imbalance, autonomous deadlock risk, and 
   - Verified by tests: `✓ Autonomous mode auto-resolves duplicate without human blocking` and `✓ Autonomous mode logs AUTONOMOUS_DEDUP resolution`. Headless agent deadlocks in CI and stochastic trials are eliminated.
 
 #### B. Interactive Non-Binary Conversational Mapping Table (`/add-logic`)
-- In [`skills/logic/add-logic/SKILL.md:53-65`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/add-logic/SKILL.md#L53-L65), natural language responses from developers map deterministically to programmatic commands:
+- In [`skills/logic/add-logic/SKILL.md:53-65`](../../../skills/logic/add-logic/SKILL.md#L53-L65), natural language responses from developers map deterministically to programmatic commands:
   - *"Refine / Update / Replace"* $\implies$ Agent runs `add-logic --arg-id ARG-XX`.
   - *"Why / What is ARG-XX?"* $\implies$ Agent displays `ARG-XX` without changing state.
   - *"Distinct / Keep separate / New"* $\implies$ Agent runs `add-logic --allow-duplicate true`.
 
 #### C. Intent-Preserving Refactoring Isolation
-- In [`skills/logic/add-logic/SKILL.md:23`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/add-logic/SKILL.md#L23) and ADR-0003 Decision 4.C:
+- In [`skills/logic/add-logic/SKILL.md:23`](../../../skills/logic/add-logic/SKILL.md#L23) and ADR-0003 Decision 4.C:
   When a developer proposes decommission or migration (e.g. *"Migrate away from SQLite over NFS to PostgreSQL"*), Step 1 explicitly directs the agent to isolate the target architecture as $C$ (*"Deploy PostgreSQL cluster"*), preventing legacy deprecation mentions from colliding with negative constraints.
 
 ---
 
 ### 4. Systems Code Quality, Security & Edge Cases
-*File Anchors: [`scripts/grill-state.mjs`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs), [`scripts/test-epistemic-engine.mjs:500-565`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/test-epistemic-engine.mjs#L500-L565)*
+*File Anchors: [`scripts/grill-state.mjs`](../../../scripts/grill-state.mjs), [`scripts/test-epistemic-engine.mjs:500-565`](../../../scripts/test-epistemic-engine.mjs#L500-L565)*
 
 #### A. Regex Security & Table Mutation Hardening
 - **Safe Regex Escaping**: `escapeRegExp(string)` added to line 236.
@@ -194,27 +155,27 @@ Every architectural flaw, mathematical imbalance, autonomous deadlock risk, and 
   `exempt_terms: data.exempt_terms.flatMap(t => tokenize(String(t)))`. Terms like `sqlite:wal` tokenize into `sqlite` and `wal`, removing unigram and bigram collisions as expected.
 
 #### C. State Contamination Fix in `cmdInit`
-- In [`scripts/grill-state.mjs:572-577`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L572-L577), the flawed predicate `(!explicitArgId && !existingState.input_text)` was removed. Sessions only resume if explicit argument ID matches or `source_prompt === input`. Subsequent runs with new proposals never inherit stale premises.
+- In [`scripts/grill-state.mjs:572-577`](../../../scripts/grill-state.mjs#L572-L577), the flawed predicate `(!explicitArgId && !existingState.input_text)` was removed. Sessions only resume if explicit argument ID matches or `source_prompt === input`. Subsequent runs with new proposals never inherit stale premises.
 
 #### D. CLI Ergonomics & Subcommand Help
-- In [`scripts/grill-state.mjs:1683-1698`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L1683-L1698):
+- In [`scripts/grill-state.mjs:1683-1698`](../../../scripts/grill-state.mjs#L1683-L1698):
   - `--key=value` splitting implemented.
   - `-h` and `--help` flags intercept all subcommands (`check-gate --help`, `add-logic -h`, `commit --help`), printing usage and exiting cleanly with code 0.
   - Root CLI help text documents all flags (`--arg-id`, `--allow-duplicate`, `--machine`, `--payload-file`).
 
 #### E. Clean Presentation & Stranded Placeholder Removal
-- In [`scripts/grill-state.mjs:1159`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs#L1159), `*(No active decisions recorded yet...)*` is stripped across all table population paths.
+- In [`scripts/grill-state.mjs:1159`](../../../scripts/grill-state.mjs#L1159), `*(No active decisions recorded yet...)*` is stripped across all table population paths.
 - `emitDiagnostic` supports `{ suppressSessionMetadata: true }`, eliminating `State: UNKNOWN`, `Active Machine: UNKNOWN`, `Target W=N/A` noise during pre-flight checks.
 
 ---
 
 ### 5. Packaging & Mirror Synchronization Verification
-*File Anchors: [`scripts/test-skills.mjs`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/test-skills.mjs), [`test-grill-logic/v2`](file:///C:/Users/USER/Desktop/Frameworks/test-grill-logic/v2)*
+*File Anchors: [`scripts/test-skills.mjs`](../../../scripts/test-skills.mjs)*
 
 1. **Byte-for-Byte Skill Parity**:
    - `scripts/test-skills.mjs` was upgraded to perform full normalized text comparison across all 12 skill files in `skills/` and `.agents/skills/`.
    - Result: `✓ .agents/skills mirrored cleanly with byte-for-byte content parity (12 files)`.
-2. **Mirror Workspace Verification (`test-grill-logic/v2`)**:
+2. **Mirror Verification**:
    - Ran `node scripts/test-skills.mjs`: **12/12 validated with byte-for-byte parity**.
    - Ran `node scripts/test-epistemic-engine.mjs`: **169/169 passed, 0 failed**.
 3. **Primary Workspace Verification (`grill-logic`)**:

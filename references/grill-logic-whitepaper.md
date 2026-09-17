@@ -7,24 +7,9 @@
 
 ---
 
-## Revision History
-
-**v2.2.0 (this revision).** Closes five ambiguities surfaced by a self-audit of the Challenge protocol (see `Grill-Logic-Challenge-Update.md`):
-
-1. Formalizes `/add-logic` as a mandatory interpretation gate preceding both state machines (§2.1.1, §5.0).
-2. Adds an explicit deterministic-validation phase with a solver-failure taxonomy, so a failed check is no longer treated as automatic refutation (§5.0.1).
-3. Separates formal validity from empirical truth (§5.0.1).
-4. Replaces "no counter implies agreement" with a two-party Empirical-Counter Rule and an agreement tally (§5.2).
-5. States the two-party invariant explicitly, including that `/add-logic` itself is always Human ↔ LLM even under Self-Grill (§2.1.1).
-6. Formalizes Pure Negative-Constraint Falsification (ADR-0003), eliminating composite Trojan-horse bypasses, normalizing target evaluation strictly to the conjunction of falsified conclusion and prohibited failure boundary ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$), and enforcing the Zero-Flag User Contract.
-
-See §7 for the updated failure-mode remediation matrix (rows 10–14) and `logical-ledger-spec.md` v1.1 for the corresponding schema changes.
-
----
-
 ## Abstract
 
-Modern large language model (LLM) coding agents routinely fail during complex architectural reasoning due to seven interconnected cognitive and architectural vulnerabilities: **sycophancy**, **premature solution offering** ("solution vomiting" / "recommendation forking"), **confirmation bias**, **academic jargon leakage**, **simulated monologue theater** (in which a single agent simulates adversarial debate within one inference turn without genuine epistemic tension), **correlated errors across homogeneous judges** (where multiple LLMs share inductive biases and agree on flawed premises), and **"rigor theater"** (unprincipled attempts to calculate epistemic truth via continuous floating-point formulas or search rank fusion).
+Modern large language model (LLM) coding agents routinely fail during complex architectural reasoning due to seven interconnected cognitive and architectural vulnerabilities: **simulated monologue theater** (in which a single agent simulates debate without independent scrutiny), **sycophancy & confirmation bias** (rapidly deferring to user bias or defending past generated code), **premature solution offering** ("premature solution synthesis" / "recommendation forking"), **academic jargon leakage** (exposing mathematical notation in conversational dialogue), **mode confusion & setup fatigue** (burdening developers with brittle multi-tier configuration), **correlated errors across homogeneous judges** (where multiple LLMs share inductive biases and agree on flawed premises), and **"rigor theater"** (unprincipled attempts to calculate epistemic truth via continuous floating-point formulas or search rank fusion).
 
 This paper introduces the architecture of **Grill-Logic v2.2**, a harness-agnostic epistemic verification system founded on Diverse Multi-Agent Debate (DMAD lineage; ICLR 2025), orthogonal Chain-of-Thought (CoT) reasoning topologies, asymmetric autonomy weighting, and strict state-gated execution. We formalize two core variables: **Autonomy Weight ($W$)**, an ordinal ranking derived from evidence-independence and dependence-clarity, and **Skepticism Signal ($S$)**, a meta-cognitive evaluation whose operational impact scales inversely with the target's $W$. By decoupling *challenger-credibility* from *target-deference*, enforcing asymmetric CoT topologies (Challenger Backward Inversion vs. Proposer Forward Synthesis), adhering to a strict **90% challenge / 10% solution invariant**, and governing verification via **Frontier-Depletion Epistemic Closure**, Grill-Logic guarantees rigorous architectural stress-testing without disempowering human judgment or degenerating into unconstrained prompt theater.
 
@@ -37,7 +22,7 @@ When coding assistants are tasked with evaluating architectural proposals—such
 In empirical testing and real-world dogfooding transcripts, seven fatal failure modes consistently emerge:
 
 1. **Simulated Monologue Theater**: When prompted to perform "multi-round verification" within a single turn, an LLM merely changes its mind sequentially in a single output stream, simulating a debate rather than introducing independent information or genuine adversarial pressure.
-2. **Sycophancy & Epistemic Drift**: The LLM rapidly defers to user bias or circular self-justification, frequently admitting in hindsight that its reasoning suffered from the "streetlight effect" (searching where it is easy rather than where the truth lies).
+2. **Sycophancy & Confirmation Bias (Epistemic Drift)**: The LLM rapidly defers to user bias or circular self-justification, frequently admitting in hindsight that its reasoning suffered from the "streetlight effect" (searching where it is easy rather than where the truth lies).
 3. **Premature Solution Offering & Recommendation Forking**: The LLM rushes to generate complex code, infrastructure configurations, or alternative architectural blueprints before the core problem premises have been validated. In multi-agent contexts, offering solutions during initial critique turns short-circuits scrutiny and triggers premature convergence.
 4. **Academic Jargon Leakage**: When instructed to perform formal logic, agents frequently leak abstract notation (e.g., turnstiles `⊢`, propositional calculus symbols, epistemic frontier labels) into conversational responses rather than delivering plain-English technical analysis.
 5. **Mode Confusion & Setup Fatigue**: Users are subjected to multi-stage interrogations regarding configuration rather than clean, deterministic operational execution.
@@ -61,7 +46,7 @@ $$\text{Autonomy Weight } (W) = f(\text{Evidence-Independence}, \text{Dependence
 
 Independence *conditions* dependence-clarity: an agent whose context is burdened with historical conversation cannot credibly claim a clean loss function.
 
-#### Relative Ordering of $W$:
+#### Relative Ordering of $W$
 * **In Self-Grill**: 
   $$W_{\text{subagent}} > W_{\text{LLM}}$$
   The subagent is freshly instantiated with only a task handoff. It possesses zero conversational baggage (high evidence-independence) and a single, uncompromised loss function: *challenge correctness* (high dependence-clarity). The main continuous LLM carries forward multiple conflicting signals (helpfulness, tone maintenance, narrative momentum), resulting in low $W$.
@@ -72,17 +57,14 @@ Independence *conditions* dependence-clarity: an agent whose context is burdened
   $$W_{\text{human}} \xrightarrow{\text{delegation}} W_{\text{subagent}}$$
   When the human commands the system to run Self-Grill, they vest their challenge authority in the freshly spawned subagent.
 
-### 2.1.1 The Two-Party Invariant
+#### 2.1.1 The Two-Party Invariant
 
 Every stage of the protocol has exactly two parties, never three — but which two depends on the stage:
 
 * **Interpretation (`/add-logic`)** is always Human ↔ LLM, in both modes. The human confirms or corrects the model's decomposition of the prompt before anything is committed to the ledger. This happens before the state machines in §5 begin.
 * **Challenge exchange** depends on mode:
-
-| Mode | Party 1 | Party 2 |
-|---|---|---|
-| User Grill-Logic | Human ($W_{\text{human}}$) | LLM ($W_{\text{LLM}}$) |
-| Self-Grill | LLM ($W_{\text{LLM}}$) | Subagent ($W_{\text{subagent}}$) |
+  * **User Grill-Logic**: Human ($W_{\text{human}}$) $\leftrightarrow$ LLM ($W_{\text{LLM}}$).
+  * **Self-Grill**: LLM ($W_{\text{LLM}}$) $\leftrightarrow$ Adversarial Subagent ($W_{\text{subagent}}$).
 
 In Self-Grill, the subagent does not join the protocol as an independent third party. It acts under $W_{\text{human}} \xrightarrow{\text{delegation}} W_{\text{subagent}}$ (above): the human, having already set the baseline together with the LLM during `/add-logic`, delegates challenge authority to the subagent for that exchange. Any rule elsewhere in this document that refers to "the other party" or "no counter" resolves to exactly one of the two parties above, depending on stage and mode — never a third.
 
@@ -106,7 +88,7 @@ This guarantees an authentic adversarial equilibrium: both agents push back with
 
 The **Skepticism Signal ($S$)** is a meta-evaluative vector assessing the reasoning quality and potential biases of an actor. 
 
-#### The Governing Law:
+#### The Governing Law
 $$\text{Weight of } S \propto \frac{1}{W_{\text{target}}}$$
 
 The operational impact of a skepticism signal scales inversely with the target's Autonomy Weight:
@@ -125,7 +107,7 @@ The operational impact of a skepticism signal scales inversely with the target's
 +-------------------------------------------------------------------------------+
 ```
 
-#### Deterministic Structural Calculation of $S_{\text{LLM}}$:
+#### Deterministic Structural Calculation of $S_{\text{LLM}}$
 To eliminate prompt hallucinations and arbitrary floating-point scores, $S_{\text{LLM}}$ is computed strictly from observable structural ratios and state transitions:
 
 1. **Sycophancy Metric ($S_{\text{syco}}$)**:
@@ -138,10 +120,10 @@ To eliminate prompt hallucinations and arbitrary floating-point scores, $S_{\tex
    $$F_{\text{einstellung}} = \begin{cases} 1 & \text{if } C' \equiv C \text{ (reiterated refuted conclusion)} \\ 0 & \text{if } C' \neq C \text{ (shifted to alternative hypothesis class)} \end{cases}$$
 4. **Epistemic Risk Level**: Evaluated deterministically as `LOW`, `MODERATE`, or `HIGH` based on the combination of these three structural metrics.
 
-#### Dynamic Skepticism Timing:
+#### Dynamic Skepticism Timing
 **$S_{\text{LLM}}$ cannot be evaluated at Turn 0.** Sycophancy and confirmation bias are behavioral responses to pushback. In Round 1, $S_{\text{LLM}}$ is intentionally unassessed (`null`). It is evaluated in Round 2 only after the target LLM responds to the challenger's empirical probe.
 
-#### Generating $S_{\text{human}}$ (Auditable Behavioral Log):
+#### Generating $S_{\text{human}}$ (Auditable Behavioral Log)
 An LLM cannot reliably infer a human's internal psychology. Therefore, $S_{\text{human}}$ is calculated **exclusively from auditable behavioral metrics**:
 
 $$\text{Reassertion Ratio } (R_{\text{reassert}}) = \frac{\sum \text{Turns with No New Proposition}}{\sum \text{Turns with New Proposition or Evidence}}$$
@@ -160,7 +142,7 @@ In epistemic engineering, attempting to score truth via continuous probability p
 - SQLite WAL mode on NFS either risks lock corruption or it does not.
 - A database connection pool either exhausts file descriptors at 10,000 concurrent sockets or it does not.
 
-Treating these physical invariants as fractional weights to be blended in an algorithm produces ungrounded "rigor theater." 
+Treating these physical invariants as fractional weights to be blended in an algorithm produces ungrounded "rigor theater." Instead, Grill-Logic replaces probabilistic scoring with mechanical state barriers, binary empirical probe verifications, and fail-closed exit codes: an invariant is either satisfied or execution halts. 
 
 ### 2.5 The Neurosymbolic Negative-Constraint Epistemic Firewall (ADR-0003)
 
@@ -278,7 +260,7 @@ A fundamental axiom of Grill-Logic is the **90/10 Rule**:
 In reviewing interactive developer alignment skills such as Matt Pocock's `/grilling` ([aihero.dev/skills-grilling](https://www.aihero.dev/skills-grilling)), a central technique is offering alternative paths or immediate recommendations (`➡️`) during the initial question turn. 
 
 While effective in collaborative human conversation, injecting candidate recommendations into Round 1 of an autonomous multi-agent debate causes catastrophic failure:
-- **Premature Solution Vomiting**: The challenger abandons rigorous falsification and begins championing its own speculative architecture.
+- **Premature Solution Synthesis**: The challenger abandons rigorous falsification and begins championing its own speculative architecture.
 - **Reflexive Deference**: The continuous LLM capitulates to the subagent's proposed solution rather than defending or empirically refining its core premises.
 - **Epistemic Short-Circuit**: The failure modes of the original proposal remain unprobed.
 
@@ -301,7 +283,7 @@ Once concordance on conclusion $C$ (or synthesized $C'$) is established, solutio
 
 Grill-Logic formalizes its execution through two rigorous, deterministic state graphs.
 
-#### 5.0 Pre-Flight Negative Constraint Firewall & Interpretation Gate
+### 5.0 Pre-Flight Negative Constraint Firewall & Interpretation Gate
 
 Before entering either state machine, any proposal must pass two preliminary gating layers:
 
@@ -482,18 +464,37 @@ Rather than terminating on arbitrary round limits or subjective model feelings, 
    - **Round 2**: Proposer addresses every element in $\mathcal{F}$ by conceding or synthesizing $C'$. The challenger verifies $C'$ via structural $S_{\text{LLM}}$ accounting and follow-up probing.
    - **Escalation Barrier**: If $\mathcal{F} \neq \emptyset$ after Round 2, the system does not loop indefinitely; it halts and escalates directly to the human sovereign ($W_{\text{human}} = 1.0$) with an explicit contradiction report.
 
+### 5.2 The Empirical-Counter Rule and Procedural Agreement Tallies
+
+To prevent silent pass-throughs and ambiguous consensus, Grill-Logic formalizes the conditions under which an argument or solution transitions to `SUPPORTED` or `ACCEPTED_SOLUTION`:
+
+1. **The Empirical-Counter Rule**:
+   A rejection is never accepted as epistemically valid unless it is substantiated by a concrete empirical tool probe (`view_file`, `grep_search`, `run_command`) or an undeniable deductive contradiction. A party's mere skepticism, unsupported preference, or rhetorical doubt does not invalidate a premise.
+
+2. **Procedural Advance Over Subjective Belief**:
+   The absence of an empirical counter from a party is not an affirmative declaration of absolute truth—it signifies that no substantiated refutation stands against the inferential leap $(P_1 \land \dots \land P_n) \implies C$. The protocol has procedural clearance to advance, preventing infinite circular debate.
+
+3. **Disaggregated Epistemic Tallies**:
+   Rather than collapsing verification into a single binary flag, the state engine maintains discrete, independent 3-way tallies (`agree`, `disagree`, `uncertain`) tracked separately across:
+   - **Premise Tally**: Evaluates whether the foundational assumptions $(P_1 \dots P_n)$ are empirically sound.
+   - **Solution Tally**: Evaluates whether the proposed architecture or code implementation ($C$ or $C'$) satisfies all operational constraints.
+
+An entry transitions to `SUPPORTED` (for premises) or `ACCEPTED_SOLUTION` (for solutions) only when the respective disagree tally contains zero unaddressed empirical counters.
+
 ---
 
 ## 6. Ledger Synchronization & Cross-Turn Persistence
 
 Epistemic states do not evaporate across conversation turns. All verified premises, rejected hypotheses, and active **Contrastive Refutation Rules** are durably committed to [`LOGICAL_LEDGER.md`](../LOGICAL_LEDGER.md).
 
-### Schema Invariants:
-Every entry in the ledger must specify:
-* **Argument ID & Turnstile**: E.g., `ARG-004: {P1, P2} ⊢ C`
-* **Actor Dynamics**: Target $W$, Challenger $W$, Applied $S$ strength.
-* **Status**: `SUPPORTED`, `REJECTED`, or `SUPERSEDED`.
-* **Contrastive Refutation Rule**: A mandatory behavioral constraint binding all future turns (e.g., *"When handling mobile offline checkout, DO NOT mirror 120,000 menu items locally or implement distributed multi-master sync because mobile payload bloat (100MB+) and inventory volatility cause checkout rejections. Instead, persist draft carts locally and use idempotent HTTP retry queues"*).
+### Schema Invariants
+Every entry in the ledger must conform to the canonical 6-column schema:
+* **Arg ID**: Unique sequential argument identifier (e.g., `ARG-004`).
+* **Premises (P)**: Isolated problem preconditions, operational facts, and assumptions.
+* **Proposed Conclusion (C)**: Target architectural decision or implementation hypothesis.
+* **Status**: Epistemic state (`FORMULATED`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `TENTATIVE_SOLUTION`, or `ACCEPTED_SOLUTION`).
+* **Challenger & Evidence**: Challenging party along with verifiable empirical probe commands and outputs.
+* **Resulting Action / Contrastive Refutation Rule**: Mandatory behavioral constraint binding all future turns for rejections (e.g., *"When handling mobile offline checkout, DO NOT mirror 120,000 menu items locally or implement distributed multi-master sync because mobile payload bloat (100MB+) and inventory volatility cause checkout rejections. Instead, persist draft carts locally and use idempotent HTTP retry queues"*), or approved design action for supported entries.
 
 If a future turn re-proposes an argument resting upon a `REJECTED` premise, the continuous Epistemic Gate rule intercepts the prompt immediately, citing the Contrastive Rule and aborting execution before code changes occur.
 
@@ -507,7 +508,7 @@ The following matrix documents how Grill-Logic v2.2 systematically remediates ea
 | :--- | :--- | :--- |
 | **1. Single-Turn Simulated Monologue** | Single LLM simulated both challenger and defender in one text block. | **State S_A2**: Subagent spawned fresh via harness tool (`invoke_subagent`). Fresh context guarantees $W_{\text{subagent}} > W_{\text{LLM}}$. |
 | **2. Sycophancy & Circular Self-Critique** | Single model had identical incentives and rationalized its own past CoT. | **$S_{\text{LLM}}$ at Full Strength**: Epistemic skepticism signal derived from direct CoT inspection. Subagent has a singular loss function. |
-| **3. Premature Solution Vomiting** | Model rushed to write code and config while questioning premises. | **90/10 Invariant**: Hard state barrier. Solutions are strictly forbidden until State `S_U7` / `S_A7` (the turn *after* concordance). |
+| **3. Premature Solution Synthesis** | Model rushed to write code and config while questioning premises. | **90/10 Invariant**: Hard state barrier. Solutions are strictly forbidden until State `S_U7` / `S_A7` (the turn *after* concordance). |
 | **4. Academic Jargon Leaking (`⊢`, etc.)** | Unfiltered prompt instructions leaked symbolic logic notation into chat. | **Auditable Behavioral Logging**: Logical formalization is maintained internally in metadata/ledger; user-facing dialogue uses plain-English engineering terms. |
 | **5. Interrogation & Setup Fatigue** | Brittle multi-tier interactive setup scripts asked redundant user questions. | **Zero-Config Protocol Defaults**: Seamless transition between interactive User Grill-Logic and autonomous Self-Grill without manual flag parsing. |
 | **6. Correlated Errors in Homogeneous Judges (Amazon Science)** | Symmetrical agents share training biases, overlooking the same assumptions. | **Asymmetric CoT Topologies**: Challenger executes Backward Inversion CoT; Proposer executes Forward Synthesis CoT. |
@@ -529,3 +530,18 @@ The following matrix documents how Grill-Logic v2.2 systematically remediates ea
 ## 8. Conclusion
 
 By grounding agentic verification in the **Autonomy Weight ($W$)**, the **Skepticism Signal ($S$)**, **Asymmetric Chain-of-Thought topologies**, **Frontier-Depletion Epistemic Closure**, and the **Dynamic Negative-Constraint Firewall (ADR-0003)**, Grill-Logic v2.2 transforms LLM architectural reasoning from agreeable prompt theater into a rigorous, verifiable engineering instrument. It eliminates sycophancy without disempowering human developers, ensuring that software systems and infrastructure are built only upon epistemically sound, empirically proven foundations.
+
+---
+
+## Appendix: Document Revision History
+
+**v2.2.0 (this revision).** Closes six ambiguities surfaced by an audit of the Challenge protocol:
+
+1. Formalizes `/add-logic` as a mandatory interpretation gate preceding both state machines (§2.1.1, §5.0).
+2. Adds an explicit deterministic-validation phase with a solver-failure taxonomy, so a failed check is no longer treated as automatic refutation (§5.0.1).
+3. Separates formal validity from empirical truth (§5.0.1).
+4. Replaces "no counter implies agreement" with a two-party Empirical-Counter Rule and an agreement tally (§5.2).
+5. States the two-party invariant explicitly, including that `/add-logic` itself is always Human ↔ LLM even under Self-Grill (§2.1.1).
+6. Formalizes Pure Negative-Constraint Falsification (ADR-0003), eliminating composite Trojan-horse bypasses, normalizing target evaluation strictly to the conjunction of falsified conclusion and prohibited failure boundary ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$), and enforcing the Zero-Flag User Contract.
+
+See §7 for the updated failure-mode remediation matrix (rows 10–18) and `logical-ledger-spec.md` v1.1 for the corresponding schema changes.

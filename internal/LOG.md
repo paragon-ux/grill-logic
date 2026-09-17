@@ -256,7 +256,7 @@ It turns the agent from an eager, sycophantic yes-man into a rigorous, sound rea
 ### User Prompt (Grill Logic Premise Validation)
 
 Grill Logic Premise Validation
-    I approve, but also this project should be as professional and skill-advanced as the original grill skillset https://github.com/mattpocock/skills . I cloned that repo under C:\Users\USER\Desktop\Frameworks\grill-logic\comparison.  You must retain lineage to DDOT, CCoT, Skills, GSD, SDD, but not PDLT necessarily, that is orthogonal. You are now the project lead of grill-logic.
+    I approve, but also this project should be as professional and skill-advanced as the original grill skillset https://github.com/mattpocock/skills . I cloned that repo under ./comparison.  You must retain lineage to DDOT, CCoT, Skills, GSD, SDD, but not PDLT necessarily, that is orthogonal. You are now the project lead of grill-logic.
 
 ---
 
@@ -286,7 +286,7 @@ Please review the plan and click Proceed or let me know if you would like any ad
 ---
 
 ### Repository Location
-The repo: C:\Users\USER\Desktop\Frameworks\grill-logic
+The repo: ./
 
 ---
 
@@ -356,7 +356,7 @@ graph TD
 
 > [!IMPORTANT]
 > **Key Architectural Design Decisions**:
-> 1. **Repository Layout**: Creating the repository at the root of `C:\Users\USER\Desktop\Frameworks\grill-logic\` alongside the `comparison/` directory, while excluding `comparison/` from builds and releases.
+> 1. **Repository Layout**: Creating the repository at the root of `grill-logic/` alongside the `comparison/` directory, while excluding `comparison/` from builds and releases.
 > 2. **Prose Quality Constraint**: Enforcing the strict rule from Matt Pocock's skills repository: **no em-dashes anywhere in prose**. Sentence structures will use commas, colons, parentheses, or conjunctions.
 > 3. **Dual Harness Invocation Support**: Every skill carries both Claude Code frontmatter (`disable-model-invocation: true` for user skills) and OpenAI/Codex YAML metadata (`agents/openai.yaml`), fully compatible with Antigravity skills.
 > 4. **Standard Schemas**: Formalizing standard schemas for argument representations (`schemas/argument-form.json`) and epistemic registry entries (`schemas/logical-ledger.json`).
@@ -369,25 +369,25 @@ graph TD
 
 Establish standard repository configuration, metadata, and scripts:
 
-#### [NEW] [package.json](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/package.json)
+#### [NEW] [package.json](package.json)
 - Project manifest defining `@grill-logic/skills` (version 1.0.0), linting, testing, and skill synchronization scripts.
 
-#### [NEW] [CLAUDE.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/CLAUDE.md)
+#### [NEW] [CLAUDE.md](CLAUDE.md)
 - Development instructions, bucket organization guidelines, invocation policies, docs mirroring rules, and the strict no-em-dash prose convention.
 
-#### [NEW] [AGENTS.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/AGENTS.md)
+#### [NEW] [AGENTS.md](AGENTS.md)
 - Root instructions for AI coding agents and harness runners.
 
-#### [NEW] [CONTEXT.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/CONTEXT.md)
+#### [NEW] [CONTEXT.md](CONTEXT.md)
 - Core domain glossary and epistemic concepts (Standard Logical Form, Inferential Bridge, Epistemic Ledger, Actor-Agnostic Challenge, Soundness vs. Validity, Gatekeeper).
 
-#### [NEW] [README.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/README.md)
+#### [NEW] [README.md](README.md)
 - Top-level repository overview, architectural motivation, skill catalog grouped into User-invoked and Model-invoked, quickstart, and installation guide.
 
-#### [NEW] [CHANGELOG.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/CHANGELOG.md)
+#### [NEW] [CHANGELOG.md](CHANGELOG.md)
 - Version history starting with 1.0.0 initial release.
 
-#### [NEW] [LICENSE](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/LICENSE)
+#### [NEW] [LICENSE](LICENSE)
 - MIT License.
 
 ---
@@ -396,49 +396,49 @@ Establish standard repository configuration, metadata, and scripts:
 
 Store design decisions, lineage proofs, and contributor guidance:
 
-#### [NEW] [.agents/lineage.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/lineage.md)
+#### [NEW] [.agents/lineage.md](.agents/lineage.md)
 - Formal analysis of DMAD, CCoT, Skills, GSD, SDD, and how Grill-Logic operationalizes each.
 - Explicit demarcation proving why PDLT (procedural task tracking) is orthogonal to Epistemic Truth Maintenance.
 
-#### [NEW] [.agents/invocation.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/invocation.md)
+#### [NEW] [.agents/invocation.md](.agents/invocation.md)
 - Rules governing user-invoked vs model-invoked skills, cross-skill dependencies (`Call the Skill tool with ...`), and harness compatibility.
 
-#### [NEW] [.agents/writing-docs.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/writing-docs.md)
+#### [NEW] [.agents/writing-docs.md](.agents/writing-docs.md)
 - Strict template and writing guidelines for the 4-section documentation pattern (`What it does`, `When to reach for it`, `Common questions`, `It's working if`).
 
-#### [NEW] [.agents/install-block.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/install-block.md)
+#### [NEW] [.agents/install-block.md](.agents/install-block.md)
 - Standard installation snippets for Claude Code, Antigravity, and Codex.
 
-#### [NEW] [.agents/adr/0001-epistemic-layer-separation.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/adr/0001-epistemic-layer-separation.md)
+#### [NEW] [.agents/adr/0001-epistemic-layer-separation.md](.agents/adr/0001-epistemic-layer-separation.md)
 - ADR on decoupling Epistemic Truth Maintenance from procedural planning and task execution.
 
-#### [NEW] [.agents/adr/0002-standard-form-argumentation.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/adr/0002-standard-form-argumentation.md)
+#### [NEW] [.agents/adr/0002-standard-form-argumentation.md](.agents/adr/0002-standard-form-argumentation.md)
 - ADR on selecting Standard Logical Form ($P \vdash C$) over Boolean Normal Forms (CNF/DNF) to prevent combinatorial explosion and focus on inferential validity.
 
-#### [NEW] [.agents/adr/0003-actor-agnostic-dmad.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/adr/0003-actor-agnostic-dmad.md)
+#### [NEW] [.agents/adr/0003-actor-agnostic-dmad.md](.agents/adr/0003-actor-agnostic-dmad.md)
 - ADR on abstracting multi-agent debate into actor-agnostic challenge mechanics (internal reasoning, adversary LLM, human MCQ, sandbox probe).
 
-#### [NEW] [.agents/adr/0004-contrastive-ledger-as-ccot.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.agents/adr/0004-contrastive-ledger-as-ccot.md)
+#### [NEW] [.agents/adr/0004-contrastive-ledger-as-ccot.md](.agents/adr/0004-contrastive-ledger-as-ccot.md)
 - ADR on implementing the Logical Ledger as dynamic Contrastive Chain-of-Thought (negative constraints preventing fallacy resurrection).
 
 ---
 
 ### 3. Plugin Manifests (`.claude-plugin/`)
 
-#### [NEW] [.claude-plugin/plugin.json](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.claude-plugin/plugin.json)
+#### [NEW] [.claude-plugin/plugin.json](.claude-plugin/plugin.json)
 - Claude Code plugin manifest registering all promoted skills.
 
-#### [NEW] [.claude-plugin/marketplace.json](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/.claude-plugin/marketplace.json)
+#### [NEW] [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json)
 - Self-contained single-plugin marketplace manifest.
 
 ---
 
 ### 4. JSON Schemas (`schemas/`)
 
-#### [NEW] [schemas/argument-form.json](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/schemas/argument-form.json)
+#### [NEW] [schemas/argument-form.json](schemas/argument-form.json)
 - Schema for prompts decomposed into Standard Form (Premises, Unstated Assumptions, Candidate Conclusions, Inferences).
 
-#### [NEW] [schemas/logical-ledger.json](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/schemas/logical-ledger.json)
+#### [NEW] [schemas/logical-ledger.json](schemas/logical-ledger.json)
 - Schema for the persistent Epistemic Decision Registry (Argument ID, Premises, Status: `SUPPORTED` | `REJECTED` | `UNCERTAIN`, Challenger, Evidence, Invalidation Traces).
 
 ---
@@ -479,7 +479,7 @@ Skills structured into 3 distinct buckets:
 * **[NEW] `skills/productivity/README.md`**:
   * Bucket documentation linking each skill.
 
-#### [NEW] [skills/README.md](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/skills/README.md)
+#### [NEW] [skills/README.md](skills/README.md)
 * Overview of all skill buckets.
 
 ---
@@ -502,13 +502,13 @@ Mirrors `skills/` with the strict 4-section standard:
 
 ### 7. Tooling & Verification Scripts (`scripts/`)
 
-#### [NEW] [scripts/link-skills.sh](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/scripts/link-skills.sh)
+#### [NEW] [scripts/link-skills.sh](scripts/link-skills.sh)
 - Shell script symlinking skills into `~/.claude/skills`, `~/.agents/skills`, and `~/.gemini/antigravity/skills`.
 
-#### [NEW] [scripts/link-skills.ps1](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/scripts/link-skills.ps1)
+#### [NEW] [scripts/link-skills.ps1](scripts/link-skills.ps1)
 - PowerShell script symlinking skills for Windows environments.
 
-#### [NEW] [scripts/validate-repo.mjs](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/scripts/validate-repo.mjs)
+#### [NEW] [scripts/validate-repo.mjs](scripts/validate-repo.mjs)
 - Automated repo validator checking:
   1. Frontmatter validity (`name`, `description`).
   2. Matching `agents/openai.yaml` for every skill.
@@ -516,7 +516,7 @@ Mirrors `skills/` with the strict 4-section standard:
   4. Docs mirroring completeness (every engineering, logic, and productivity skill has a corresponding doc).
   5. JSON schemas validity against test fixtures.
 
-#### [NEW] [scripts/validate-ledger.mjs](file:///C:/Users/USER/Desktop/Frameworks/grill-logic/scripts/validate-ledger.mjs)
+#### [NEW] [scripts/validate-ledger.mjs](scripts/validate-ledger.mjs)
 - Interactive/CLI validator to check consistency, cycles, and status transitions of any project's `LOGICAL_LEDGER.json`.
 
 ---

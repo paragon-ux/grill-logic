@@ -125,7 +125,7 @@ Version 2 expands the initial architectural baselines with release-hardened veri
 ---
 
 ### Experiment 6: Continuous Multi-Turn Hook Interception
-* **Objective**: Verify that `.agents/rules/epistemic-gate.md` and `hooks/scripts/epistemic-pre-invocation.mjs` selectively gate architectural claims in multi-turn dialogues.
+* **Objective**: Verify that `.agents/rules/epistemic-gate.md` and the pre-flight gate check (`scripts/grill-state.mjs check-gate`) selectively gate architectural claims in multi-turn dialogues.
 * **Execution Trace**:
   * **Turn 1 (Trivial Request)**: User sends `"Format this JSON response into a table"`.
     * *Hook Result*: Pattern matcher returned `{}`. Zero injected context. Execution proceeded immediately.

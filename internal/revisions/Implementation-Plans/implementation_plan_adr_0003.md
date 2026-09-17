@@ -3,8 +3,8 @@
 ## Overview
 
 This implementation plan resolves the architectural gaps, specification ambiguities, and technical edge cases identified by the independent multi-agent audit panel in:
-- [`internal/revisions/Gemini-Critique/Implementation-Plan-Audit.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/internal/revisions/Gemini-Critique/Implementation-Plan-Audit.md)
-- [`internal/revisions/Gemini-Critique/Multi-Agentic-Epistemic-System-Audit.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/internal/revisions/Gemini-Critique/Multi-Agentic-Epistemic-System-Audit.md)
+- [`internal/revisions/Gemini-Critique/Implementation-Plan-Audit.md`](../../../internal/revisions/Gemini-Critique/Implementation-Plan-Audit.md)
+- [`internal/revisions/Gemini-Critique/Multi-Agentic-Epistemic-System-Audit.md`](../../../internal/revisions/Gemini-Critique/Multi-Agentic-Epistemic-System-Audit.md)
 
 We formally eliminate heuristic alternative extraction and prescriptive polarity scoring in favor of **Pure Popperian Negative-Constraint Falsification** backed by **Falsified Boundary Normalization** ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$). We also institute the **Zero-Flag User Contract** (natural language for humans; programmatic flags for agents) with explicit **Autonomous Deduplication Policies** to prevent deadlock in `/self-grill`.
 
@@ -24,7 +24,7 @@ We formally eliminate heuristic alternative extraction and prescriptive polarity
 >    - Similarity $0.50 \le \text{sim} \le 0.85$: automatically passes `--allow-duplicate true` with a disambiguated title. Zero human blocking in autonomous runs.
 > 5. **Zero-Flag Human Experience**: In interactive modes (`/add-logic`, `/grill-logic`), users converse in natural language. Non-binary user responses (Replace, Inspect, Proceed) deterministically map to engine commands.
 > 6. **Full Resolution of 7 Systems Edge Cases**: Regex escaping (`escapeRegExp`), case-insensitive table matching (`/gi`), `--arg-id` validation, `--key=value` parsing, `--help` exit code 0, pre-flight header noise suppression, allowlist range clamping $[0.01, 1.0]$, and stranded placeholder cleanup.
-> 7. **Byte-for-Byte Skill Parity**: Verified via SHA256 / exact string equality in `test-skills.mjs` across `skills/`, `.agents/skills/`, and the `test-grill-logic/v2` mirror.
+> 7. **Byte-for-Byte Skill Parity**: Verified via SHA256 / exact string equality in `test-skills.mjs` across `skills/` and `.agents/skills/`.
 
 ---
 
@@ -32,7 +32,7 @@ We formally eliminate heuristic alternative extraction and prescriptive polarity
 
 ### Component 1: Architecture Decision Record (ADR-0003)
 
-#### [NEW] [0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md)
+#### [NEW] [0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md](../../../references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md)
 Formalize ADR-0003 with rigorous mathematical foundations:
 - **1. Context & Root Cause**:
   - Schema contamination in `LOGICAL_LEDGER.md` (combining $C_{\text{rejected}}$, premises, and advice into `refutedText`).
@@ -55,7 +55,7 @@ Formalize ADR-0003 with rigorous mathematical foundations:
     Formal mapping of pre-flight, formulation, dedup, and challenge states:
     `S_U0A_PREFLIGHT_CHECK` $\to$ `S_U0B_ADD_LOGIC` $\to$ `S_U0C_DEDUP_RESOLUTION` $\to$ `S_U1_PREMISE_ISOLATION`.
 
-#### [MODIFY] [AGENTS.md](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/AGENTS.md)
+#### [MODIFY] [AGENTS.md](../../../AGENTS.md)
 - Add ADR-0003 summary to Section 2 (Core Epistemic Protocol).
 - Reaffirm Section 3: "Zero User Flags. Developers interact via natural language and clean slash commands. Agent harnesses translate intent into programmatic CLI executions."
 
@@ -63,7 +63,7 @@ Formalize ADR-0003 with rigorous mathematical foundations:
 
 ### Component 2: Epistemic State Engine (`scripts/grill-state.mjs`)
 
-#### [MODIFY] [grill-state.mjs](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/grill-state.mjs)
+#### [MODIFY] [grill-state.mjs](../../../scripts/grill-state.mjs)
 
 1. **Purge Alternative Extraction & Schema Contamination**:
    - Delete `altVec`, `simAlt`, `contAlt`, `scoreAlt`, and `adoptsAlternative`.
@@ -136,7 +136,7 @@ Formalize ADR-0003 with rigorous mathematical foundations:
 
 ### Component 3: Skill Specifications & Zero-Flag UX
 
-#### [MODIFY] [skills/logic/add-logic/SKILL.md](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/add-logic/SKILL.md)
+#### [MODIFY] [skills/logic/add-logic/SKILL.md](../../../skills/logic/add-logic/SKILL.md)
 - Institutionalize the **Zero-Flag Human Contract**:
   - Developers provide natural language input (`/add-logic [idea]`).
   - Decision table for non-binary developer responses on `POTENTIAL_DUPLICATE_FLAG`:
@@ -146,20 +146,20 @@ Formalize ADR-0003 with rigorous mathematical foundations:
   - Intent-Preserving Migration/Deprecation Guidance:
     - If proposal is refactoring/deprecation (`decommission X in favor of Y`), isolate $Y$ as the proposed conclusion so legacy mentions don't trigger the negative constraint firewall.
 
-#### [MODIFY] [skills/logic/grill-logic/SKILL.md](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/grill-logic/SKILL.md)
+#### [MODIFY] [skills/logic/grill-logic/SKILL.md](../../../skills/logic/grill-logic/SKILL.md)
 - Ensure complete v2.2.0 alignment:
   - Step 0 mandatory check (`/add-logic`).
   - Interactive decision tree walk with strict turn yield (`ask_question`).
   - Zero flags expected from human.
 
-#### [MODIFY] [skills/logic/self-grill/SKILL.md](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/self-grill/SKILL.md)
+#### [MODIFY] [skills/logic/self-grill/SKILL.md](../../../skills/logic/self-grill/SKILL.md)
 - Ensure complete v2.2.0 alignment:
   - Step 0 mandatory check (`/add-logic`).
   - Autonomous Deduplication Policy execution.
   - Asymmetric CoT, 90/10 Invariant (zero solutions in Round 1).
   - Empirical tool probe requirement and token handshake.
 
-#### [MODIFY] [.agents/rules/epistemic-gate.md](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/.agents/rules/epistemic-gate.md)
+#### [MODIFY] [.agents/rules/epistemic-gate.md](../../../.agents/rules/epistemic-gate.md)
 - Update epistemic gate rule to cite ADR-0003, Falsified Boundary Normalization, and zero user flags.
 
 #### [SYNCHRONIZE] Mirror all skills to `.agents/skills/`
@@ -169,10 +169,10 @@ Formalize ADR-0003 with rigorous mathematical foundations:
 
 ### Component 4: Test Infrastructure & Verification
 
-#### [MODIFY] [scripts/test-skills.mjs](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/test-skills.mjs)
+#### [MODIFY] [scripts/test-skills.mjs](../../../scripts/test-skills.mjs)
 - Upgrade `scripts/test-skills.mjs` to perform recursive byte-for-byte content equality checks across all files in `skills/` vs `.agents/skills/`. Fail closed on any content drift.
 
-#### [MODIFY] [scripts/test-epistemic-engine.mjs](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/scripts/test-epistemic-engine.mjs)
+#### [MODIFY] [scripts/test-epistemic-engine.mjs](../../../scripts/test-epistemic-engine.mjs)
 Expand test suite with concrete assertions for all audited items:
 1. **Falsified Boundary Normalization**:
    - `Deploy SQLite over NFS` fails closed.
@@ -190,10 +190,6 @@ Expand test suite with concrete assertions for all audited items:
    - `allowlist.json` with `"firewall": 25` clamps to $0.25$ (not $25.0$).
    - `threshold_overrides: null` parses without throwing `TypeError`.
    - Stranded placeholder `*(No active decisions recorded yet...)*` is removed from ledger on first row insertion.
-
-#### [SYNCHRONIZE] Mirror to `test-grill-logic/v2`
-- Copy all updated code, skills, scripts, and tests to `C:\Users\USER\Desktop\Frameworks\test-grill-logic\v2`.
-- Run full test suite in `test-grill-logic/v2`.
 
 ---
 

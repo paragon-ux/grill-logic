@@ -15,7 +15,7 @@ Recent empirical findings from Amazon Science (*"When LLM judges agree, should w
 
 ### B. The Premature Solution Trap ("Recommendation Forking")
 In reviewing interactive developer alignment skills such as Matt Pocock's `/grilling` ([aihero.dev/skills-grilling](https://www.aihero.dev/skills-grilling)), a key pattern is presenting immediate alternative solutions or recommendations (`➡️`) during the initial interview round. While helpful in human conversational brainstorming, injecting candidate solutions into Round 1 of an autonomous multi-agent debate produces catastrophic epistemic failure:
-- It causes **premature solution vomiting**, where the challenger diverts focus from validating premises to advocating for a speculative replacement architecture.
+- It causes **premature solution synthesis**, where the challenger diverts focus from validating premises to advocating for a speculative replacement architecture.
 - It triggers **reflexive deference**, where the continuous LLM abandons its position not because the empirical premises were disproven, but because an authoritative subagent proposed an attractive alternative.
 - It directly violates Grill-Logic's core **90/10 Invariant** (allocating ~90% capacity to challenging premises, and at most ~10% to offering solutions only after concordance).
 
@@ -144,7 +144,7 @@ We reject pseudo-mathematical scoring formulas ($\mathcal{E} = W \cdot (1 - S)$ 
 
 ### Positive Consequences
 - **Decorrelated Validation**: Eliminates the correlated-error trap highlighted by Amazon Science by enforcing orthogonal CoT directions across agents.
-- **Protection Against Premature Solution Vomiting**: Strict 90/10 enforcement prevents the challenger from becoming a premature solution dispenser, preserving adversarial pressure.
+- **Protection Against Premature Solution Synthesis**: Strict 90/10 enforcement prevents the challenger from becoming a premature solution dispenser, preserving adversarial pressure.
 - **Deterministic & Defensible Termination**: Verification stops because the epistemic frontier is objectively empty, not because a timer or round counter expired.
 - **Zero "Rigor Theater"**: No opaque floating-point scores or fake formulas; all gates are enforced mechanically by tool execution, state machine transitions, and exit codes.
 

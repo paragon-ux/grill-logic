@@ -1,45 +1,8 @@
-Searched for files: *adr*
-Listed directory adr
-Searched for files: *implementation_plan*.md
-Viewed implementation_plan.md:1-127
-Searched for "0003"
-Searched for "ADR-0003"
-Searched for "0003"
-Searched for "0003"
-Viewed implementation_plan.md:115-140
-Listed directory 0f3b7e15-5f6a-4d89-89f9-97b4e735ae01
-Viewed decision-tree-summary.md:1-121
-Viewed walkthrough.md:1-87
-Viewed transcript.jsonl:120-630
-Viewed transcript.jsonl:600-630
-Searched for ""step_index":606"
-Searched for "Review the proposed implementation plan"
-Listed directory logs
-Viewed transcript_full.jsonl:600-640
-Viewed 0002-asymmetric-cot-and-frontier-closure.md:1-100
-Viewed LOGICAL_LEDGER.md:1-13
-Viewed grill-state.mjs:360-450
-Viewed SKILL.md:1-80
-Viewed SKILL.md:1-60
-Viewed SKILL.md:1-60
-Viewed grill-state.mjs:290-330
-Viewed grill-state.mjs:1080-1120
-Viewed grill-state.mjs:500-540
-Viewed grill-state.mjs:540-565
-Viewed grill-state.mjs:120-160
-Searched for "function parseArgs"
-Searched for "parseArgs"
-Viewed grill-state.mjs:1650-1716
-Searched for "parseArgs"
-Searched for "parse"
-Viewed grill-state.mjs:1600-1655
-Viewed grill-state.mjs:1590-1605
-
 # Architectural Review: Proposed ADR-0003 Implementation Plan & Epistemic Invariant Specifications
 
-**Target Document**: `Implementation Plan: ADR-0003, Pure Negative-Constraint Falsification, Zero-Flag UX, and Epistemic Engine Parity` ([`conversation: 0f3b7e15`](file:///C:/Users/USER/.gemini/antigravity/brain/0f3b7e15-5f6a-4d89-89f9-97b4e735ae01/implementation_plan.md))  
-**Target Architecture**: ADR-0003 Draft (`0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`)  
-**Audit Context**: Independent Systems, Adversarial, and UX Audits across [Whitepaper v2.2.0](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/grill-logic-whitepaper.md), [Logical Ledger Spec v1.1.0](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/logical-ledger-spec.md), [ADR-0001](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0001-live-stochastic-release-gate.md), and [ADR-0002](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0002-asymmetric-cot-and-frontier-closure.md).
+**Target Document**: `Implementation Plan: ADR-0003, Pure Negative-Constraint Falsification, Zero-Flag UX, and Epistemic Engine Parity`  
+**Target Architecture**: ADR-0003 Draft (`references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`)  
+**Audit Context**: Independent Systems, Adversarial, and UX Audits across [Whitepaper v2.2.0](../../references/grill-logic-whitepaper.md), [Logical Ledger Spec v1.1.0](../../references/logical-ledger-spec.md), [ADR-0001](../../references/adr/0001-live-stochastic-release-gate.md), and [ADR-0002](../../references/adr/0002-asymmetric-cot-and-frontier-closure.md).
 
 ---
 
@@ -57,7 +20,7 @@ Below is the exhaustive breakdown of what is missing, ambiguous, and architectur
 
 ### A. The $C_{\text{rejected}}$ Granularity Dilemma & Missing "Falsified Boundary Normalization"
 * **The Plan Statement**: *"For `REJECTED` rows, vectorize strictly `conclusionRaw` ($C_{\text{rejected}}$)."*
-* **The Critical Ambiguity**: Free-form conclusion entries in [`LOGICAL_LEDGER.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/LOGICAL_LEDGER.md#L9) have no standardized semantic granularity. This creates an immediate dual-failure trap:
+* **The Critical Ambiguity**: Free-form conclusion entries in [`LOGICAL_LEDGER.md`](../../../LOGICAL_LEDGER.md) have no standardized semantic granularity. This creates an immediate dual-failure trap:
   1. **The Overbroad / Terse Conclusion Trap (High False Positives)**:
      - If a developer originally submitted: *"Deploy SQLite"* with premise *"P: Mount over multi-node NFS volume"*, and the row was marked `REJECTED`.
      - If the firewall vectorizes strictly `conclusionRaw` (`"Deploy SQLite"`), it will subsequently **block any valid SQLite deployment in the project** (e.g., local single-writer cache, embedded CLI config store), even when no NFS volume is involved.
@@ -186,7 +149,7 @@ The implementation plan only partially captures the concrete defects surfaced by
 
 ## 4. Deficiencies in the Proposed ADR-0003 Draft Structure
 
-Comparing the ADR-0003 outline in Component 1 against [ADR-0001](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0001-live-stochastic-release-gate.md) and [ADR-0002](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/references/adr/0002-asymmetric-cot-and-frontier-closure.md) reveals several structural omissions:
+Comparing the ADR-0003 outline in Component 1 against [ADR-0001](../../references/adr/0001-live-stochastic-release-gate.md) and [ADR-0002](../../references/adr/0002-asymmetric-cot-and-frontier-closure.md) reveals several structural omissions:
 
 1. **Missing Formal Mathematical Definition**:
    - ADR-0001 formalized the stochastic trial matrix; ADR-0002 formalized the Asymmetric CoT topology ($C \implies \neg P$ vs $(P \land \text{Bounds}) \implies C'$) and frontier depletion ($\mathcal{F} = \emptyset$).
@@ -220,7 +183,7 @@ Specify that when an argument is rejected:
    *(Completely eliminates `alternativeText`, `scoreAlt`, and regex splitting, while preserving the actual refutation boundary).*
 
 ### Modification 2: Add Autonomous Disambiguation Protocol to Component 3 (`SKILL.md`)
-Update [`skills/logic/self-grill/SKILL.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/self-grill/SKILL.md) and [`skills/logic/add-logic/SKILL.md`](file:///c:/Users/USER/Desktop/Frameworks/grill-logic/skills/logic/add-logic/SKILL.md):
+Update [`skills/logic/self-grill/SKILL.md`](../../../skills/logic/self-grill/SKILL.md) and [`skills/logic/add-logic/SKILL.md`](../../../skills/logic/add-logic/SKILL.md):
 - In autonomous execution (`--machine autonomous`), if `POTENTIAL_DUPLICATE_FLAG` occurs:
   - If identical source prompt/argument ID: automatically append `--arg-id <COLLIDING_ID>`.
   - If new stochastic proposal: automatically append `--allow-duplicate true`.

@@ -4,7 +4,7 @@ The **Logical Ledger** is the truth-maintenance core of Grill-Logic. It synthesi
 
 Its primary purpose is to act as a **negative constraint firewall**: once an argument or premise is refuted, the ledger stores an explicit contrastive rule that prevents the agent from hallucinating back into the invalid reasoning path in later turns (*anti-semantic-attraction*).
 
-> **v1.1 revision (updated for ADR-0003).** This spec reflects the `/add-logic` → Deterministic Validation → Solution Proposal/Acceptance decomposition of *Challenge* (see `Grill-Logic-Challenge-Update.md`) and Pure Negative-Constraint Falsification (see `references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`). A self-audit resolved previous ambiguities, and ADR-0003 establishes pure negative-constraint falsification where the firewall evaluates proposals strictly against the normalized target space ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$) under the Zero-Flag User Contract. Section 2, Section 4, and Section 6 govern these invariants.
+> **v1.1 revision (updated for ADR-0003).** This spec reflects the `/add-logic` → Deterministic Validation → Solution Proposal/Acceptance decomposition of *Challenge* and Pure Negative-Constraint Falsification (see `references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`). Previous ambiguities were resolved, and ADR-0003 establishes pure negative-constraint falsification where the firewall evaluates proposals strictly against the normalized target space ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$) under the Zero-Flag User Contract. Section 2, Section 4, and Section 6 govern these invariants.
 
 ---
 
@@ -40,7 +40,7 @@ A `FORMULATED` entry carries no `SUPPORTED` / `REJECTED` / `UNCERTAIN` label. It
 ```markdown
 # Epistemic Decision Registry: Logical Ledger
 
-| Arg ID | Premises ($P$) | Proposed Conclusion ($C$) | Status | Challenger & Evidence | Resulting Action / Contrastive Rule |
+| Arg ID | Premises (P) | Proposed Conclusion (C) | Status | Challenger & Evidence | Resulting Action / Contrastive Refutation Rule |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **ARG-01** | **P1**: High database read latency.<br>**P2**: Redis has sub-ms read speeds.<br>**P_hidden**: Latency is read-throughput bound. | **C**: Add Redis caching layer in front of the database. | **REJECTED**<br>*(Invalid Leap)* | **Subagent DMAD Audit** ($W_{\text{subagent}} > W_{\text{LLM}}$, $S_{\text{LLM}}$=high): Latency caused by missing composite index on `users(tenant_id, created_at)` causing unindexed table scans. | **Contrastive Rule**: Do not infer caching layer ($C$) from read latency ($P1$) without verifying query execution plans.<br>**Derived Action**: Add composite index ($C'$). |
 | **ARG-02** | **P1**: System processes EU patient health records.<br>**P2**: GDPR & HIPAA require cryptographic and physical tenancy isolation. | **C**: Separate PostgreSQL database instance per tenant. | **SUPPORTED** | **User Concordance** ($W_{\text{human}}$=high, $S_{\text{human}}$=dampened): User confirmed strict compliance mandate prohibits shared schema tenancy. | **Pass to Execution**: Clear task for multi-database tenancy module ($C$). |
@@ -123,11 +123,8 @@ Two additions relative to v1.0:
 ### 4.3 The Two-Party & Empirical-Counter Rule
 
 `/add-logic` (§2) is always Human ↔ LLM. The challenge exchange that follows has exactly two parties, never three, and which two depends on mode:
-
-| Mode | Party 1 | Party 2 |
-|---|---|---|
-| `/grill-logic` | Human | LLM |
-| `/self-grill` | LLM | Subagent |
+* **`/grill-logic`**: Human $\leftrightarrow$ LLM.
+* **`/self-grill`**: LLM $\leftrightarrow$ Subagent (acting under delegated human authority).
 
 In `/self-grill`, the subagent acts on the human's delegated authority for the challenge exchange — it is not a third party the human must also separately agree with.
 
