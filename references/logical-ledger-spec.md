@@ -4,7 +4,7 @@ The **Logical Ledger** is the truth-maintenance core of Grill-Logic. It synthesi
 
 Its primary purpose is to act as a **negative constraint firewall**: once an argument or premise is refuted, the ledger stores an explicit contrastive rule that prevents the agent from hallucinating back into the invalid reasoning path in later turns (*anti-semantic-attraction*).
 
-> **v1.1 revision (updated for ADR-0003).** This spec reflects the `/add-logic` → Deterministic Validation → Solution Proposal/Acceptance decomposition of *Challenge* and Pure Negative-Constraint Falsification (see `references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`). Previous ambiguities were resolved, and ADR-0003 establishes pure negative-constraint falsification where the firewall evaluates proposals strictly against the normalized target space ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$) under the Zero-Flag User Contract. Section 2, Section 4, and Section 6 govern these invariants.
+> **v1.1 revision (updated for ADR-0003).** This spec reflects the `/add-logic` → Deterministic Validation → Solution Proposal/Acceptance decomposition of *Challenge* and Pure Negative-Constraint Falsification (see `references/adr/0003-negative-constraint-falsification-and-anti-prescriptive-firewall.md`). Previous ambiguities were resolved, and ADR-0003 establishes pure negative-constraint falsification where the firewall evaluates proposals strictly against the normalized target space ($C_{\text{rejected}} \cup R_{\mathit{refute\_boundary}}$) under the Zero-Flag User Contract. Section 2, Section 4, and Section 6 govern these invariants.
 
 ---
 

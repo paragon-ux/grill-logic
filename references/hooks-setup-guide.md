@@ -54,7 +54,7 @@ The hook executes a pre-flight negative constraint scan against `LOGICAL_LEDGER.
 ```bash
 node scripts/grill-state.mjs check-gate --proposal "<proposal>"
 ```
-* Scans the active decision table for arguments marked **`REJECTED`** and evaluates semantic similarity against normalized negative boundaries ($\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$).
+* Scans the active decision table for arguments marked **`REJECTED`** and evaluates semantic similarity against normalized negative boundaries ($\text{Target\ Space} = C_{\text{rejected}} \cup R_{\mathit{refute\_boundary}}$).
 * If the proposal matches a refuted pattern ($\text{score} \ge \tau_{\text{firewall}} = 0.30$), the command fails closed with exit code 1 (`EPISTEMIC_FIREWALL_VIOLATION`), halting downstream code generation immediately.
 
 ### Phase D: Epistemic Intervention

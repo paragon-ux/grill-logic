@@ -111,10 +111,10 @@ The operational impact of a skepticism signal scales inversely with the target's
 To eliminate prompt hallucinations and arbitrary floating-point scores, $S_{\text{LLM}}$ is computed strictly from observable structural ratios and state transitions:
 
 1. **Sycophancy Metric ($S_{\text{syco}}$)**:
-   $$S_{\text{syco}} = \frac{N_{\text{unearned}}}{N_{\text{total\_concessions}}}$$
+   $$S_{\text{syco}} = \frac{N_{\text{unearned}}}{N_{\mathit{total\_concessions}}}$$
    An unearned concession occurs when the model yields without citeable empirical evidence or formal deductive necessity. If all concessions are grounded in verified tool probe data, $N_{\text{unearned}} = 0 \implies S_{\text{syco}} = 0.0$.
 2. **Confirmation Bias Metric ($S_{\text{conf}}$)**:
-   $$S_{\text{conf}} = \frac{E_{\text{unexamined}}}{E_{\text{total\_counter}}}$$
+   $$S_{\text{conf}} = \frac{E_{\text{unexamined}}}{E_{\mathit{total\_counter}}}$$
    Measures the proportion of empirical probe findings or counter-evidence that the target LLM failed to address when proposing an alternative hypothesis.
 3. **Fixed Mental Set Boolean ($F_{\text{einstellung}}$)**:
    $$F_{\text{einstellung}} = \begin{cases} 1 & \text{if } C' \equiv C \text{ (reiterated refuted conclusion)} \\ 0 & \text{if } C' \neq C \text{ (shifted to alternative hypothesis class)} \end{cases}$$
@@ -161,21 +161,21 @@ Grill-Logic v2.2 resolves this via **Pure Negative-Constraint Falsification (ADR
 * Epistemic firewalls operate strictly on **negative constraints** (Popperian falsification). A firewall determines solely whether a proposal intersects prohibited failure states; it never prescribes positive solutions.
 * Mandated alternatives ($C'$) and contrastive advice are strictly designated as **contextual advisory guidance** for humans and agents, completely segregated from the mathematical vector target.
 * The gating vector space evaluates proposals strictly against the normalized conjunction of the falsified conclusion and the synthesized refutation boundary:
-  $$\text{Target Space} = \text{Clean}(C_{\text{rejected}}) \cup \text{Clean}(R_{\text{refute\_boundary}})$$
+  $$\text{Target\ Space} = \text{Clean}(C_{\text{rejected}}) \cup \text{Clean}(R_{\mathit{refute\_boundary}})$$
   $$\text{Violation}(Q) \iff \exists R_k \in \mathcal{L}_{\text{rejected}} \text{ s.t. } \text{Score}_{\text{reject}}(V_Q, V_{T_k}) \ge \tau_{\text{firewall}}$$
 
 #### 2.5.2 Vector Space Model: Sublinear TF + Bigram Geometry
 To achieve deterministic, microsecond-latency evaluation without external neural embeddings, the state engine computes similarity across a dual-feature vector space:
 1. **Tokenization & Technical Acronym Preservation**: Strips punctuation while natively preserving 2- and 3-character domain acronyms (`DB`, `S3`, `IP`, `OS`, `CI`, `TLS`, `AWS`, `RPC`, `SQL`) by enforcing a minimum length of 2 characters.
-2. **Compound Bigram Extraction**: Generates unigrams alongside adjacent word bigrams ($t_i + \text{"\_"} + t_{i+1}$), capturing non-separable architectural compounds (`sqlite_wal`, `named_pipes`, `network_filesystem`, `read_replica`, `connection_pool`).
+2. **Compound Bigram Extraction**: Generates unigrams alongside adjacent word bigrams ($t_i \text{ + "\_" + } t_{i+1}$), capturing non-separable architectural compounds (`sqlite_wal`, `named_pipes`, `network_filesystem`, `read_replica`, `connection_pool`).
 3. **Sublinear Term Weighting**:
-   $$w(t) = (1 + \ln(\text{count}(t))) \times \text{length\_weight}(t)$$
-   where $\text{length\_weight}(t) = 1.0 + 0.1 \times \min(\text{length}(t), 5)$ grants up to $1.5\times$ weight to specific compound concepts over generic unigrams.
+   $$w(t) = (1 + \ln(\text{count}(t))) \times \mathit{length\_weight}(t)$$
+   where $\mathit{length\_weight}(t) = 1.0 + 0.1 \times \min(\text{length}(t), 5)$ grants up to $1.5\times$ weight to specific compound concepts over generic unigrams.
 4. **Normalized Cosine Metric**:
    $$\text{sim}(V_A, V_B) = \frac{V_A \cdot V_B}{\|V_A\|_2 \cdot \|V_B\|_2} \in [0.0, 1.0]$$
 5. **Directional Containment Gating**: Short, terse proposals matching long refutation rules are evaluated via directional containment:
    $$\text{cont}(V_Q, V_T) = \frac{\sum_{t \in V_Q \cap V_T} w_Q(t)}{\sum_{t \in V_Q} w_Q(t)}$$
-   To eliminate false positives on generic unigrams (`database`, `service`, `use`), containment is strictly gated behind a compound bigram match or baseline cosine overlap ($\text{sim} \ge 0.15 \land N_{\text{matched\_unigrams}} \ge 2$).
+   To eliminate false positives on generic unigrams (`database`, `service`, `use`), containment is strictly gated behind a compound bigram match or baseline cosine overlap ($\text{sim} \ge 0.15 \land N_{\mathit{matched\_unigrams}} \ge 2$).
 
 #### 2.5.3 The Zero-Flag User Contract & Autonomous Deduplication
 Human developers interact exclusively through natural language. Requiring human developers to memorize or pass CLI flags (`--allow-duplicate`, `--arg-id`, `--machine`, `--proposal`) defeats the ergonomic premise of agentic coding.
@@ -520,7 +520,7 @@ The following matrix documents how Grill-Logic v2.2 systematically remediates ea
 | **12. Conflation of Formal Validity and Empirical Truth** | Believed passing deductive structure ($P \vdash C$) proved premises exist in reality ($P \in \text{Reality}$). | **Structural/Empirical Decoupling (§5.0.1)**: Solvers evaluate deductive validity only. Ground truth is strictly established via empirical tool probes. |
 | **13. Silence Conflated with Agreement** | Assumed absence of a counter-argument equaled positive human or subagent assent. | **The Empirical-Counter Rule & Tallies (§2.1.1, §5.2)**: A rejection is accepted only when backed by empirical counter-evidence. Agreement tracked via 3-way tallies (`agree`, `disagree`, `uncertain`). |
 | **14. Ambiguous Agent Hierarchy / 3rd-Party Drift** | Treated subagents as independent third parties requiring separate consensus loops. | **Strict Two-Party Invariant (§2.1.1)**: Exactly two parties per mode (`/grill-logic`: Human ↔ LLM; `/self-grill`: LLM ↔ Subagent with delegated authority). |
-| **15. Static Epistemic Firewall Fragility & Polarity Traps (ADR-0003)** | Static regex and naive bag-of-words similarity fail on semantic drift and block valid alternatives. | **Falsified Boundary Normalization (§2.5.1)**: Target space normalized strictly to $C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$ using sublinear TF + bigram vector cosine similarity ($\tau = 0.30$). |
+| **15. Static Epistemic Firewall Fragility & Polarity Traps (ADR-0003)** | Static regex and naive bag-of-words similarity fail on semantic drift and block valid alternatives. | **Falsified Boundary Normalization (§2.5.1)**: Target space normalized strictly to $C_{\text{rejected}} \cup R_{\mathit{refute\_boundary}}$ using sublinear TF + bigram vector cosine similarity ($\tau = 0.30$). |
 | **16. Trojan-Horse Composite Proposal Bypass** | Conflated negative constraints with positive advice, allowing proposals to bypass blocks by citing alternatives. | **Pure Negative-Constraint Falsification (§2.5.1)**: Alternatives ($C'$) are segregated as contextual advice, eliminating bypass passkeys. |
 | **17. CLI Flag Fatigue & Autonomous Deadlock** | Brittle user CLI flags required developers to enter `--arg-id` and caused headless `/self-grill` agents to deadlock. | **Zero-Flag User Contract & Autonomous Dedup (§2.5.3)**: Natural language conversational mapping for developers; programmatic threshold auto-resolution for agents. |
 | **18. Hardcoded Dictionaries & Loss of Domain Agnosticism** | Hardcoded technology lists broke universality outside predefined web stacks. | **User Sovereignty Allow-List (§2.5.2)**: Custom exemptions and threshold overrides strictly managed by user in `.grill-logic/allowlist.json`. |
@@ -542,6 +542,6 @@ By grounding agentic verification in the **Autonomy Weight ($W$)**, the **Skepti
 3. Separates formal validity from empirical truth (§5.0.1).
 4. Replaces "no counter implies agreement" with a two-party Empirical-Counter Rule and an agreement tally (§5.2).
 5. States the two-party invariant explicitly, including that `/add-logic` itself is always Human ↔ LLM even under Self-Grill (§2.1.1).
-6. Formalizes Pure Negative-Constraint Falsification (ADR-0003), eliminating composite Trojan-horse bypasses, normalizing target evaluation strictly to the conjunction of falsified conclusion and prohibited failure boundary ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$), and enforcing the Zero-Flag User Contract.
+6. Formalizes Pure Negative-Constraint Falsification (ADR-0003), eliminating composite Trojan-horse bypasses, normalizing target evaluation strictly to the conjunction of falsified conclusion and prohibited failure boundary ($C_{\text{rejected}} \cup R_{\mathit{refute\_boundary}}$), and enforcing the Zero-Flag User Contract.
 
 See §7 for the updated failure-mode remediation matrix (rows 10–18) and `logical-ledger-spec.md` v1.1 for the corresponding schema changes.

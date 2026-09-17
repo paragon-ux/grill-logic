@@ -95,7 +95,7 @@ Grill-Logic v2.2 consists of six tightly integrated subsystems:
   - Term weights must follow sublinear term frequency: $w_t = (1 + \ln(\text{count}_t)) \cdot \text{weight}_{\text{length}}(t)$.
   - Similarity must be computed via vector cosine angle: $\text{sim}(\vec{A}, \vec{B}) = \frac{\vec{A} \cdot \vec{B}}{\|\vec{A}\| \|\vec{B}\|}$.
 * **FR-2.2 (Pure Negative-Constraint Falsification)**:
-  - When scanning candidate proposals against `REJECTED` ledger entries, the target vector must be computed strictly over the normalized union of the falsified conclusion and clean refutation boundary: $\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$.
+  - When scanning candidate proposals against `REJECTED` ledger entries, the target vector must be computed strictly over the normalized union of the falsified conclusion and clean refutation boundary: $\text{Target\ Space} = C_{\text{rejected}} \cup R_{\mathit{refute\_boundary}}$.
   - Mandated alternatives, derived actions, and prescriptive advice ($C'$) must be stripped from the target space prior to vectorization, mechanically preventing Trojan-horse composite bypasses and polarity traps.
 * **FR-2.3 (Firewall Collision & Containment Gating)**:
   - If $\text{sim}(\vec{P}, \vec{T}) \ge \tau_{\text{firewall}}$ (default $\tau = 0.30$) or containment $\kappa(\vec{P}, \vec{T}) \ge 0.65$, `scripts/grill-state.mjs check-gate` must emit a collision flag, print a standardized diagnostic block, and exit with code 2.
@@ -168,7 +168,7 @@ Grill-Logic v2.2 consists of six tightly integrated subsystems:
   - `Proposed Conclusion (C)`: The proposed architectural decision.
   - `Status`: `FORMULATED`, `VALIDATING`, `SUPPORTED`, `REJECTED`, `UNCERTAIN`, or `SUPERSEDED`.
   - `Challenger & Evidence`: Challenger identity ($W$), empirical probe outputs, or benchmarks.
-  - `Resulting Action / Contrastive Refutation Rule`: Permanent negative design rule ($R_{\text{refute\_boundary}}$) and advisory action ($C'$).
+  - `Resulting Action / Contrastive Refutation Rule`: Permanent negative design rule ($R_{\mathit{refute\_boundary}}$) and advisory action ($C'$).
 
 ---
 

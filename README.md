@@ -17,17 +17,17 @@ When a user prompt or agent proposal contains an unstated, false assumption—su
 
 ## The Solution: Grill-Logic v2.2
 
-**Grill-Logic v2.2** cleanly separates the **Epistemic Layer (Truth Maintenance)** from the **Procedural Layer (Task Execution)**. It introduces a formal, neurosymbolic verification pipeline with mathematical Autonomy Weight ($W$), Skepticism Signals ($S$), deterministic invariant solving, and a fail-closed runtime negative-constraint firewall.
+**Grill-Logic v2.2** cleanly separates the **Epistemic Layer (Truth Maintenance)** from the **Procedural Layer (Task Execution)**. It introduces a formal, neurosymbolic verification pipeline with Autonomy Weights (W), Skepticism Signals (S), deterministic invariant solving, and a fail-closed runtime negative-constraint firewall.
 
 | Capability | Standard Agentic Harness | Grill-Logic v2.2 Epistemic Engine |
 | :--- | :--- | :--- |
 | **Premise Validation** | Single-agent ungrounded agreement | **Step 1 Interpretation Gate (`/add-logic`)** with 5-way NeSy solver |
-| **Challenger Credibility** | Static persona prompting (*Einstellung* trap) | **Diverse Multi-Agent Debate (DMAD)** with $W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$ |
+| **Challenger Credibility** | Static persona prompting (*Einstellung* trap) | **Diverse Multi-Agent Debate (DMAD)** with high challenger authority (`W_subagent = 0.8 > W_LLM = 0.2`) |
 | **Verification Basis** | Generative assertion without tool verification | **Empirical Tool Probes Required** (`run_command`, `grep_search`, `view_file`) |
 | **Solution Pacing** | Premature generation (solutions offered in turn 1) | **Strict 90/10 Invariant**: Solutions gated until post-concordance |
 | **Reasoning Diversity** | Symmetric homogeneous CoT (correlated error) | **Asymmetric CoT (ADR-0002)**: Challenger Refutation vs. Proposer Synthesis |
-| **Memory Firewall** | Unfiltered prompt context (semantic regression) | **Dynamic Vector Firewall (ADR-0003)**: Bag-of-words + bigram cosine ($\tau = 0.30$) |
-| **Negative Constraints** | Rigid static keywords or polarity traps | **Pure Negative Falsification**: Evaluated on $(C_{\text{rejected}} \cup R_{\text{refute\_boundary}})$ |
+| **Memory Firewall** | Unfiltered prompt context (semantic regression) | **Dynamic Vector Firewall (ADR-0003)**: Sublinear TF + bigram cosine similarity |
+| **Negative Constraints** | Rigid static keywords or polarity traps | **Pure Negative Falsification**: Evaluated strictly against rejected conclusions and failure boundaries |
 | **Developer UX** | Complex synthetic flags (`--allow-dup`, `--rounds`) | **Zero User Flags**: Humans converse naturally; agents manage flags |
 | **Dependencies** | Heavy vector databases, embeddings, C++ bindings | **Zero Dependencies**: 100% Node.js standard library (`fs`, `crypto`, `path`) |
 
@@ -112,30 +112,30 @@ The continuous epistemic gate monitors architectural proposals automatically. Wh
 
 ### Pre-Flight: Negative Constraint Firewall (`check-gate`)
 * **Zero-Turn Interception**: Intercepts architectural proposals before task planning or code generation begins.
-* **Pure Negative Falsification (ADR-0003)**: Evaluates semantic similarity strictly against the normalized conjunction of refuted conclusions and failure boundaries ($\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$).
-* **Fail-Closed**: Blocks execution immediately (exit code 1) if cosine similarity exceeds threshold ($\tau = 0.30$), preventing semantic regression into known anti-patterns.
+* **Pure Negative Falsification (ADR-0003)**: Evaluates semantic similarity strictly against the normalized conjunction of refuted conclusions and prohibited failure boundaries.
+* **Fail-Closed**: Blocks execution immediately (exit code 1) if cosine similarity exceeds threshold (default 0.30), preventing semantic regression into known anti-patterns.
 
 ### Step 1: Mandatory Interpretation Gate (`/add-logic [proposal]`)
 * **Core Contract**: Mandatory prerequisite preceding all challenge exchanges.
-* **Decomposition**: Isolate stated facts ($P_1 \dots P_n$) and candidate conclusion ($C$). User corrections are accepted verbatim as baseline.
+* **Decomposition**: Isolate stated premises (`P1..Pn`) and candidate conclusions (`C`). User corrections are accepted verbatim as baseline.
 * **Deterministic NeSy Validation**: Evaluates formal argument structure (verifying whether conclusions follow logically from stated premises) using a 5-way taxonomy (`valid`, `malformed`, `inconsistent_premises`, `undecidable`, `formally_invalid`). Only `formally_invalid` auto-refutes without probes.
-* **Dynamic Deduplication Gate**: Vectorizes proposal against existing ledger rows ($\tau_{\text{dup}} = 0.50$).
-  - In Human mode: emits `POTENTIAL_DUPLICATE_FLAG` to prevent redundant rows.
-  - In Autonomous mode: auto-updates in-place if $\text{sim} > 0.85$, auto-disambiguates if $0.50 \le \text{sim} \le 0.85$.
+* **Dynamic Deduplication Gate**: Vectorizes proposals against existing ledger rows (threshold 0.50).
+  - In Human mode: emits `POTENTIAL_DUPLICATE_FLAG` to prompt user clarification without synthetic flags.
+  - In Autonomous mode: auto-updates in-place if similarity > 0.85, auto-disambiguates if similarity is between 0.50 and 0.85.
 * Commits confirmed baseline to `LOGICAL_LEDGER.md` as `FORMULATED`.
 
 ### Machine 1: Autonomous DMAD Engine (`/self-grill [proposal]`)
 * **Trigger**: `/self-grill [proposal]` or `self-grill:` or `autonomous:`
 * **Execution**: Hands-free / AFK loop driven strictly by **real empirical tool probes** (`grep_search`, `run_command`, `view_file`, or subagent). Zero simulated text monologues.
 * **Token Handshake**: Subagent logs its challenge directly into `.grill-logic/state.json` using a session `dispatch_token`.
-* **Asymmetric $W$ Guard**: $W_{\text{LLM}} = 0.2$ cannot override $W_{\text{subagent}} = 0.8$ rejection without empirical counter-probe evidence.
-* **Asymmetric CoT (ADR-0002)**: Challenger executes Backward Inversion CoT ($C \implies \neg P$); Proposer executes Forward Synthesis CoT ($(P + \text{Bounds}) \implies C'$). Strict 90/10 Invariant: Round 1 challenger never offers solutions.
+* **Asymmetric Authority Guard**: Continuous model (`W = 0.2`) cannot override subagent (`W = 0.8`) rejections without empirical counter-probe evidence.
+* **Asymmetric CoT (ADR-0002)**: Challenger executes Backward Inversion CoT (falsification); Proposer executes Forward Synthesis CoT (constraint satisfaction). Strict 90/10 Invariant: Round 1 challenger never offers solutions.
 
 ### Machine 2: Human Sequential Interview (`/grill-logic [topic]`)
 * **Trigger**: `/grill-logic [topic]` or `interview me on [topic]`
 * **Execution**: Walks down an architectural decision tree one branch at a time.
 * **Strict Turn Yield**: Ingests topic $\to$ formulates single decision $\to$ calls `ask_question` tool $\to$ **YIELDS TURN IMMEDIATELY**. The model is physically prohibited from answering for the user.
-* **Behavioral Stagnation Tracking ($S_{\text{human}}$)**: Every turn logs whether user introduced new propositions. If stagnant turns $\ge 3$, raises `HUMAN_STAGNATION_ALERT` requiring transparent diagnostic acknowledgment.
+* **Behavioral Stagnation Tracking**: Every turn logs whether user introduced new propositions. If stagnant turns reach 3, raises `HUMAN_STAGNATION_ALERT` requiring transparent diagnostic acknowledgment.
 * **Zero User Flags (ADR-0003)**: Developers converse in natural language and interactive selections. The agent executes programmatic flags behind the scenes.
 
 ---
@@ -238,8 +238,8 @@ grill-logic/
 Grill-Logic synthesizes breakthroughs across cognitive science, multi-agent debate, and epistemic truth maintenance:
 
 * **Diverse Multi-Agent Debate (DMAD, ICLR 2025)**: Proves that cosmetic persona assignment traps models in the *Einstellung effect* (fixed mental sets). Grill-Logic equips adversarial subagents with distinct problem-solving strategies (backward refutation, empirical probing, premise inversion) to break cognitive fixations.
-* **Autonomy Weight ($W$) & Skepticism Signal ($S$)**: Decouples challenger-credibility from target-deference ($W_{\text{subagent}} = 0.8 > W_{\text{LLM}} = 0.2$), applying $S_{\text{LLM}}$ at full strength against the main model while preserving sovereign developer authority ($W_{\text{human}} = 1.0$).
+* **Autonomy Weight & Skepticism Signals**: Decouples challenger-credibility from target-deference (`W_subagent = 0.8 > W_LLM = 0.2`), applying skepticism at full strength against the continuous model while preserving sovereign developer authority (`W_human = 1.0`).
 * **The 90/10 Invariant**: Gates solution generation until after premise concordance is reached, preventing premature solution synthesis.
 * **Mandatory Live Stochastic Release Gate (ADR-0001)**: Mandates live, in-thread autonomous verification trials with genuine tool probes and token handshakes prior to any release or version tag.
 * **Asymmetric CoT & Frontier-Depletion Closure (ADR-0002)**: Enforces orthogonal reasoning paths (Challenger Backward Inversion vs. Proposer Forward Constraint Synthesis) to prevent correlated errors across homogeneous LLMs. Debates terminate when all open contradictions and untested assumptions are resolved.
-* **Pure Negative-Constraint Falsification & Zero-Flag Contract (ADR-0003)**: Evaluates semantic similarity strictly against the normalized conjunction of the falsified conclusion and prohibited failure boundary (`Target Space = C_rejected ∪ R_refute_boundary`) using pure sublinear term-frequency and bigram cosine similarity ($\tau = 0.30$). Eliminates composite Trojan-horse bypasses and ensures developers interact purely via natural language while agents manage programmatic flags.
+* **Pure Negative-Constraint Falsification & Zero-Flag Contract (ADR-0003)**: Evaluates semantic similarity strictly against the normalized conjunction of the falsified conclusion and prohibited failure boundary (`Target Space = C_rejected ∪ R_refute_boundary`) using pure sublinear term-frequency and bigram cosine similarity (similarity threshold: 0.30). Eliminates composite Trojan-horse bypasses and ensures developers interact purely via natural language while agents manage programmatic flags.

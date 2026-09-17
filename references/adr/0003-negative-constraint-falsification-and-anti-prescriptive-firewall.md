@@ -15,7 +15,7 @@ A developer or agent is free to propose any implementation in the infinite archi
 
 ### A. The Schema Contamination Hazard & The Polarity Trap
 In early iterations of the dynamic cosine similarity firewall, the ledger scanner constructed its rejection vector from the entire content of the ledger row:
-$$\text{Vector Target} = \text{Clean}(C_{\text{rejected}}) \oplus \text{Clean}(\text{Premises}) \oplus \text{Clean}(R_{\text{contrastive\_rule}})$$
+$$\text{Vector\ Target} = \text{Clean}(C_{\text{rejected}}) \oplus \text{Clean}(\text{Premises}) \oplus \text{Clean}(R_{\mathit{contrastive\_rule}})$$
 
 Because contrastive refutation rules in Column 6 provide human-readable guidance containing both the prohibited path and the recommended pivot (e.g. *"DO NOT mount SQLite over NFS. MANDATED ALTERNATIVE: Use a client-server PostgreSQL database"*), the target vector literally indexed the token `"PostgreSQL"`.
 
@@ -47,9 +47,9 @@ Merely vectorizing `conclusionRaw` in isolation creates an inverse dilemma:
 We permanently deprecate heuristic alternative extraction, polarity math (`scoreAlt`, `contAlt`, `adoptsAlternative`), and delimiter passkey parsing.
 
 The negative-constraint firewall vectorizes **strictly the conjunction of the candidate conclusion and the clean prohibited boundary**:
-$$\text{Target Space } \mathcal{T}_k = \text{Clean}(C_{\text{rejected}}) \cup \text{Clean}(R_{\text{refute\_boundary}})$$
+$$\text{Target\ Space\ } \mathcal{T}_k = \text{Clean}(C_{\text{rejected}}) \cup \text{Clean}(R_{\mathit{refute\_boundary}})$$
 
-Where $R_{\text{refute\_boundary}}$ is extracted by stripping all advisory alternative clauses (`MANDATED ALTERNATIVE:`, `Derived Action:`, `Alternative:`) from the rule cell:
+Where $R_{\mathit{refute\_boundary}}$ is extracted by stripping all advisory alternative clauses (`MANDATED ALTERNATIVE:`, `Derived Action:`, `Alternative:`) from the rule cell:
 
 ```javascript
 const cleanRuleBoundary = ruleCellRaw
@@ -81,7 +81,7 @@ Because $\mathcal{T}_k$ contains zero positive alternative tokens:
 
 Built-in Genesis System Invariants (`GENESIS_SYSTEM_INVARIANTS`) and dynamic ledger rows in `LOGICAL_LEDGER.md` follow the exact same target representation:
 $$\mathcal{T}_{\text{genesis}} = \text{sys.conclusion} \cup \text{sys.refuted}$$
-$$\mathcal{T}_{\text{ledger}} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$$
+$$\mathcal{T}_{\text{ledger}} = C_{\text{rejected}} \cup R_{\mathit{refute\_boundary}}$$
 
 Neither target vector ever includes `sys.alternative` or `mandated_alternative`.
 

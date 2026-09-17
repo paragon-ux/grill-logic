@@ -133,8 +133,8 @@ We reject pseudo-mathematical scoring formulas ($\mathcal{E} = W \cdot (1 - S)$ 
 1. **Physical State Barriers**: The state machine strictly prevents transition from `CHALLENGE_ISSUED` to `SUPPORTED` without cryptographic `dispatch_token` subagent sign-off.
 2. **Binary Tool Probe Requirement**: State transitions fail closed (`exit code 1/2`) if an empirical tool execution is not recorded in `.grill-logic/state.json`.
 3. **Deterministic Structural Metrics**: $S_{\text{LLM}}$ components are computed as exact ratios of observable counts:
-   - $S_{\text{syco}} = N_{\text{unearned}} / N_{\text{total\_concessions}}$
-   - $S_{\text{conf}} = E_{\text{unexamined}} / E_{\text{total\_counter}}$
+   - $S_{\text{syco}} = N_{\text{unearned}} / N_{\mathit{total\_concessions}}$
+   - $S_{\text{conf}} = E_{\text{unexamined}} / E_{\mathit{total\_counter}}$
    - $F_{\text{einstellung}} = (C' \equiv C)$
 4. **Fail-Closed Execution Firewall**: If any premise is `REJECTED`, code generation tools and implementation plans are hard-blocked by continuous agent rules.
 
