@@ -72,11 +72,17 @@ When operating as an AI agent in this environment, adhere to the truth-maintenan
 * **Frontier-Depletion Closure**: Debates terminate when the epistemic frontier of unexamined contradictions and untested assumptions is empty ($\mathcal{F} = \emptyset$). Max 2 autonomous rounds before mandatory human escalation ($W_{\text{human}}=1.0$).
 * **Structural Impossibility Over Pseudo-Math**: Rejects continuous float formulas ($\mathcal{E} = W \cdot (1 - S)$) or RRF rankings. Safety is enforced mechanically via deterministic state transition barriers, token locks, and fail-closed exit codes.
 
+### F. Pure Negative-Constraint Falsification & Anti-Prescriptive Firewall (ADR-0003)
+* **Falsified Boundary Normalization**: The dynamic similarity firewall evaluates proposals strictly against the normalized conjunction of the falsified conclusion and prohibited failure boundary ($\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$).
+* **Zero Prescriptive Bias**: Mandated alternatives and contrastive advice are advisory explanations for humans and agents ($C'$), never positive constraints or gate passkeys.
+* **Elimination of Composite Bypass**: Bypassing fatal violations by mentioning positive alternatives is mechanically impossible.
+* **Zero User Flags**: Human developers interact exclusively via natural language and clean slash commands. Agent harnesses inspect diagnostic exit codes and manage CLI flags programmatically.
+
 ---
 
 ## 3. Communication Protocol
 
-* **No Synthetic Flags**: Do not output or expect CLI flags like `--rounds` or `--actor`.
+* **Zero User Flags**: Do NOT expect or instruct developers to supply CLI flags (e.g. `--allow-duplicate`, `--arg-id`, `--proposal`, `--rounds`, `--actor`). Programmatic flags are strictly internal to agent harnesses. When the state engine returns diagnostics (e.g. `POTENTIAL_DUPLICATE_FLAG`), the agent converses in plain English and executes the required flags behind the scenes.
 * **No Academic Logic Jargon**: Do not emit mathematical turnstiles (`⊢`), propositional calculus symbols, or formal epistemic labels in conversational prose. Use clear software engineering terminology.
 * **Command Routing**:
   * Run `/self-grill [proposal]` for hands-free autonomous audits before code generation.

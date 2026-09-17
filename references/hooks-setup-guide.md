@@ -49,15 +49,18 @@ The hook inspects the latest conversational turn against architectural and infra
 * Making non-trivial scaling or performance claims (e.g., zero-copy I/O, distributed sharding).
 * *Filter out trivial requests*: Syntax fixes, code formatting, documentation lookups, and unit test tweaks bypass the hook.
 
-### Phase C: Truth Registry Check
-The hook inspects `LOGICAL_LEDGER.md` (if present at the workspace root):
-* Scans the active decision table for arguments marked **`REJECTED`**.
-* Extracts active **Contrastive Refutation Rules** (e.g., *"Do not infer caching layer from read latency without profiling query plans"*).
-* If the proposal matches a refuted pattern, the hook alerts the model to block execution immediately and present the supported alternative.
+### Phase C: Truth Registry Check (Fail-Closed Negative Constraint Firewall)
+The hook executes a pre-flight negative constraint scan against `LOGICAL_LEDGER.md`:
+```bash
+node scripts/grill-state.mjs check-gate --proposal "<proposal>"
+```
+* Scans the active decision table for arguments marked **`REJECTED`** and evaluates semantic similarity against normalized negative boundaries ($\text{Target Space} = C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$).
+* If the proposal matches a refuted pattern ($\text{score} \ge \tau_{\text{firewall}} = 0.30$), the command fails closed with exit code 1 (`EPISTEMIC_FIREWALL_VIOLATION`), halting downstream code generation immediately.
 
 ### Phase D: Epistemic Intervention
-If an architectural assertion is confirmed, the hook injects an ephemeral directive into the active context window:
-> *"[Epistemic Gate Active]: Architectural assertion detected. Before writing code or generating procedural plans: (1) deconstruct premises into Standard Logical Form ($P_1..P_n \vdash C$), (2) verify active negative constraints in LOGICAL_LEDGER.md, and (3) gate execution until status is SUPPORTED."*
+If an architectural assertion is detected and passes pre-flight gating:
+The hook directs the agent to execute Step 1 of the epistemic pipeline:
+> *"[Epistemic Gate Active]: Architectural assertion detected. Before writing code or generating procedural plans: (1) execute `/add-logic [proposal]` to formulate explicit premises ($P_1..P_n \vdash C$) and validate deductive form, (2) stress-test via `/self-grill` or `/grill-logic`, and (3) gate execution until status is SUPPORTED or ACCEPTED_SOLUTION."*
 
 ---
 

@@ -19,8 +19,9 @@ Neither `/grill-logic` nor `/self-grill` may run without a confirmed logical bas
 2. **Agreement is Not Truth**: User agreement confirms the baseline claim under discussion. Premises remain open to empirical challenge in downstream stages.
 3. **Verbatim Baseline Rule**: If the user corrects the logical set, that correction **must be accepted verbatim as the baseline**, even if erroneous. Preserving user intent takes absolute precedence at this stage.
 4. **Always Human ↔ LLM**: `/add-logic` is always a two-party Human ↔ LLM exchange, even when the subsequent challenge is delegated to an autonomous subagent under `/self-grill`.
-5. **Deduplication Required**: Check `LOGICAL_LEDGER.md` for duplicate or near-duplicate entries before adding. If a duplicate exists, inform the user rather than silently declining.
-6. **Formulated State**: Initial ledger entries carry status `FORMULATED` (no `SUPPORTED`, `REJECTED`, or `UNCERTAIN` label until validation and challenge).
+5. **Zero User Flags & Dynamic Deduplication (ADR-0003)**: The engine automatically computes sublinear TF cosine similarity ($\tau_{\text{dup}} = 0.50$) against all active entries in `LOGICAL_LEDGER.md`. If a duplicate is flagged (`POTENTIAL_DUPLICATE_FLAG`), the human developer is **never asked to use CLI flags**. The agent converses in plain English and translates user intent into programmatic CLI execution.
+6. **Intent-Preserving Refactoring Isolation**: If the proposal describes migrating away from, deprecating, or decommissioning an architecture (e.g. *"Migrate away from SQLite over NFS to PostgreSQL"*), decompose the prompt so that the destination architecture is isolated as $C$ (*"Deploy PostgreSQL cluster to replace legacy storage"*), preventing false-positive negative constraint violations on legacy mentions.
+7. **Formulated State**: Initial ledger entries carry status `FORMULATED` (no `SUPPORTED`, `REJECTED`, or `UNCERTAIN` label until validation and challenge).
 
 ---
 
@@ -30,7 +31,7 @@ Neither `/grill-logic` nor `/self-grill` may run without a confirmed logical bas
 Decompose the user's prompt into:
 - **Explicit Premises ($P_1, P_2, \dots$)**: Stated requirements, scale targets, or operational constraints.
 - **Hidden / Latent Premises ($P_{\text{hidden}}$)**: Unspoken technical assumptions required for the leap.
-- **Proposed Conclusion ($C$)**: The specific architectural implementation or decision.
+- **Proposed Conclusion ($C$)**: The specific architectural implementation or decision (isolated from migration context).
 
 ### Step 2: Present Interpretation to User
 Present the explicitated logical set clearly in plain software engineering terms:
@@ -46,10 +47,21 @@ Does this accurately capture what you are proposing?
 (You may confirm or provide verbatim corrections).
 ```
 
-### Step 3: Accept Corrections Verbatim & Deduplicate
+### Step 3: Accept Corrections Verbatim & Conversational Deduplication
 - If the user provides corrections, adopt them **verbatim** as the baseline.
-- Check `LOGICAL_LEDGER.md` for existing entries.
-- If duplicate: Inform the user and reference the existing `ARG-XX`.
+- Run `grill-state.mjs add-logic --prompt "<text>"` to scan `LOGICAL_LEDGER.md`.
+- **Zero-Flag Conversational Decision Table**:
+  If the engine halts with `POTENTIAL_DUPLICATE_FLAG`, **do not output CLI flags or technical commands to the user**. Present a clear, natural language choice:
+  ```text
+  I noticed this proposal closely matches existing ledger argument [ARG-XX] ("<existing conclusion>").
+  Would you like to:
+  1. Refine the existing argument in-place?
+  2. Treat this as a distinct new proposal?
+  ```
+  Map the human's response deterministically to programmatic CLI execution:
+  - **"Refine / Update / Replace"** $\implies$ Agent executes: `node scripts/grill-state.mjs add-logic --arg-id ARG-XX ...`
+  - **"Why / What is ARG-XX?"** $\implies$ Agent reads and displays ARG-XX from `LOGICAL_LEDGER.md` without state change, then re-prompts.
+  - **"Distinct / Keep separate / New"** $\implies$ Agent executes: `node scripts/grill-state.mjs add-logic --allow-duplicate true ...`
 
 ### Step 4: Commit Baseline to Ledger as FORMULATED
 Register the formulated entry via the state engine:

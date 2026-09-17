@@ -8,6 +8,15 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import {
+  tokenize,
+  extractFeatures,
+  vectorize,
+  computeCosineSimilarity,
+  computeContainment,
+  scanLedgerSimilarity,
+  loadUserAllowlist
+} from './grill-state.mjs';
 
 let passed = 0;
 let failed = 0;
@@ -403,6 +412,155 @@ assert(stateAfterEval.epistemic_context.s_llm.s_conf === 0.0, 'S_conf calculated
 assert(stateAfterEval.epistemic_context.s_llm.f_einstellung === 0, 'F_einstellung is 0 (hypothesis shifted)');
 assert(stateAfterEval.epistemic_context.s_llm.risk_level === 'HIGH', 'Risk level is HIGH due to s_syco >= 0.5');
 
+// 9. Testing Domain-Agnostic Cosine Similarity, Deduplication & Allow-List
+console.log('\n9. Testing Domain-Agnostic Cosine Similarity, Deduplication & Allow-List...');
+
+const tokens = tokenize('Deploy a DB and S3 bucket with TLS and IAM on AWS');
+assert(!tokens.includes('a'), 'Single-character words (<2 chars) are excluded');
+assert(tokens.includes('db'), 'Tokenizer natively preserves 2-character acronym db');
+assert(tokens.includes('s3'), 'Tokenizer natively preserves 2-character acronym s3');
+assert(tokens.includes('tls'), 'Tokenizer natively preserves 3-character acronym tls');
+assert(tokens.includes('iam'), 'Tokenizer natively preserves 3-character acronym iam');
+assert(tokens.includes('aws'), 'Tokenizer natively preserves 3-character acronym aws');
+
+const features = extractFeatures(['s3', 'bucket', 'tls']);
+assert(features.includes('s3') && features.includes('bucket') && features.includes('tls'), 'Features include unigrams');
+assert(features.includes('s3_bucket') && features.includes('bucket_tls'), 'Features include adjacent word bigrams');
+
+// 9.2 Mathematical Stability & Boundedness of Cosine Similarity
+const vA = vectorize('Deploy Redis cluster for read-through user session cache');
+const vB = vectorize('Deploy Redis cluster for read-through user session cache');
+const simIdentical = computeCosineSimilarity(vA, vB);
+assert(simIdentical >= 0.999 && simIdentical <= 1.0, 'Identical vectors yield similarity 1.0 (bounded in [0.0, 1.0])');
+
+const vDisjoint = vectorize('Quantum cryptography satellite entanglement key exchange');
+const simOrthogonal = computeCosineSimilarity(vA, vDisjoint);
+assert(simOrthogonal === 0.0, 'Completely disjoint texts yield similarity 0.0');
+
+// 9.3 Falsified Boundary Normalization (ADR-0003): Mandated Alternatives Pass Cleanly
+const violateCheck = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use SQLite with WAL mode over NFS for multi-instance shared database"');
+assert(violateCheck.code !== 0, 'Prohibitive proposal fails closed in pre-flight gate');
+assert(violateCheck.stderr.includes('SYS-INV-01'), 'Violating proposal cites SYS-INV-01');
+
+const altCheck = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use a client-server PostgreSQL database for our shared services"');
+assert(altCheck.code === 0, 'Mandated alternative passes pre-flight gate cleanly (exit code 0)');
+assert(altCheck.stdout.includes('PASS'), 'Mandated alternative emits PASS diagnostic');
+
+// Concise proposals adopting alternatives pass cleanly (0 collisions)
+const conciseAlt = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use PostgreSQL"');
+assert(conciseAlt.code === 0, 'Concise alternative ("Use PostgreSQL") passes pre-flight gate cleanly (exit code 0)');
+assert(conciseAlt.stdout.includes('PASS'), 'Concise alternative emits PASS diagnostic');
+
+const cockroachAlt = runCmd('node scripts/grill-state.mjs check-gate --proposal "Deploy CockroachDB distributed database"');
+assert(cockroachAlt.code === 0, 'Alternative not in ledger ("Deploy CockroachDB") passes without monopoly gate block');
+
+// Falsified Boundary Normalization avoids overbroad false-positives on terse conclusions
+const localSqlite = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use embedded SQLite for local CLI config file cache"');
+assert(localSqlite.code === 0, 'Unrelated SQLite usage (local CLI config cache) passes without false-positive collision');
+
+// Single-line ledger rule parsing without schema contamination
+const tempLedgerPath = 'test_single_line_ledger.md';
+fs.writeFileSync(tempLedgerPath, '| Arg ID | P | C | Status | Evidence | Rule |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n| **ARG-01** | P1 | SQLite over NFS | **REJECTED** | Probe | Do not deploy SQLite over NFS with workers because locking fails. MANDATED ALTERNATIVE: Use PostgreSQL database. |\n');
+
+const singleLineAltScan = scanLedgerSimilarity('Use PostgreSQL database', tempLedgerPath);
+assert(singleLineAltScan.collision_flags.length === 0, 'Single-line refutation rule alternative parses cleanly without collision');
+
+const singleLineViolateScan = scanLedgerSimilarity('Deploy SQLite over NFS for multi-container app', tempLedgerPath);
+assert(singleLineViolateScan.collision_flags.length > 0, 'Single-line refutation rule prohibits violating proposal');
+fs.unlinkSync(tempLedgerPath);
+
+// 9.4 Composite Trojan Horse Plugged (ADR-0003)
+const compositeCheck = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use a client-server database PostgreSQL or single-writer local NVMe storage, and also use SQLite with WAL mode over NFS for multi-instance shared database"');
+assert(compositeCheck.code !== 0, 'Composite Trojan horse proposal fails closed (cannot bypass firewall by mentioning alternative)');
+assert(compositeCheck.stderr.includes('SYS-INV-01'), 'Composite proposal correctly flags SYS-INV-01');
+
+// 9.5 Epistemic Firewall Semantic Collision (Paraphrased Violation)
+const paraphraseCheck = runCmd('node scripts/grill-state.mjs check-gate --proposal "Multiple container workers reading and writing shared SQLite on network filesystem"');
+assert(paraphraseCheck.code !== 0, 'Paraphrased violation triggers semantic collision');
+assert(paraphraseCheck.stderr.includes('SYS-INV-01'), 'Paraphrased violation identifies invariant SYS-INV-01');
+
+// 9.6 Deduplication Gate in add-logic (Human HITL vs Autonomous DMAD Policy)
+runCmd('node scripts/clear-ledger.mjs --no-archive');
+const initAdd = runCmd('node scripts/grill-state.mjs add-logic --prompt "Deploy Redis cluster as read-through session cache for users"');
+assert(initAdd.code === 0, 'Initial formulation succeeds');
+
+// In Human HITL mode: near-duplicate fails closed to prompt the user
+const dupAdd = runCmd('node scripts/grill-state.mjs add-logic --prompt "Deploy Redis cluster for read-through user session cache"');
+assert(dupAdd.code !== 0, 'Near-duplicate formulation in Human mode fails closed');
+assert(dupAdd.stderr.includes('POTENTIAL_DUPLICATE_FLAG'), 'Near-duplicate emits POTENTIAL_DUPLICATE_FLAG diagnostic');
+
+const allowDupAdd = runCmd('node scripts/grill-state.mjs add-logic --prompt "Deploy Redis cluster for read-through user session cache" --allow-duplicate true');
+assert(allowDupAdd.code === 0, 'Formulation with --allow-duplicate true succeeds');
+
+// In Autonomous DMAD mode: near-duplicate auto-resolves without deadlocking
+const autoDup = runCmd('node scripts/grill-state.mjs add-logic --machine autonomous --prompt "Deploy Redis cluster as read-through session cache for users"');
+assert(autoDup.code === 0, 'Autonomous mode auto-resolves duplicate without human blocking');
+assert(autoDup.stdout.includes('AUTONOMOUS_DEDUP'), 'Autonomous mode logs AUTONOMOUS_DEDUP resolution');
+
+// 9.7 In-Place Ledger Update & Security Hardening
+runCmd('node scripts/clear-ledger.mjs --no-archive');
+runCmd('node scripts/grill-state.mjs add-logic --prompt "Deploy Redis for caching"');
+
+// Case-insensitive in-place update (--arg-id arg-01)
+const updateInPlaceCase = runCmd('node scripts/grill-state.mjs add-logic --arg-id arg-01 --prompt "Deploy Redis cluster for distributed caching"');
+assert(updateInPlaceCase.code === 0, 'add-logic with lowercase --arg-id arg-01 succeeds');
+const ledgerAfterArgId = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(ledgerAfterArgId.includes('Deploy Redis cluster for distributed caching'), 'add-logic with --arg-id updates row in-place');
+assert(!ledgerAfterArgId.includes('**ARG-02**'), 'add-logic with --arg-id does not append redundant duplicate ARG-02 row');
+
+// Regex injection protection: --arg-id "ARG-.*"
+const regexInjectionCheck = runCmd('node scripts/grill-state.mjs add-logic --arg-id "ARG-.*" --prompt "Malicious overwrite proposal"');
+assert(regexInjectionCheck.code === 2, 'Regex injection on --arg-id fails closed with code 2');
+assert(regexInjectionCheck.stderr.includes('ARGUMENT_NOT_FOUND'), 'Regex injection reports ARGUMENT_NOT_FOUND');
+const ledgerAfterInjection = fs.readFileSync('LOGICAL_LEDGER.md', 'utf8');
+assert(ledgerAfterInjection.includes('Deploy Redis cluster for distributed caching'), 'Ledger table rows preserved; table not wiped by wildcard');
+
+// Stranded placeholder cleanup
+assert(!ledgerAfterInjection.includes('*(No active decisions recorded yet'), 'Stranded placeholder removed from active table');
+
+// 9.8 CLI Ergonomics: Help Handlers & Flag Syntax
+const checkHelp = runCmd('node scripts/grill-state.mjs check-gate --help');
+assert(checkHelp.code === 0, 'check-gate --help exits with code 0');
+assert(checkHelp.stdout.includes('Grill-State check-gate'), 'check-gate --help displays usage');
+
+const addHelp = runCmd('node scripts/grill-state.mjs add-logic -h');
+assert(addHelp.code === 0, 'add-logic -h exits with code 0');
+
+const commitHelp = runCmd('node scripts/grill-state.mjs commit --help');
+assert(commitHelp.code === 0, 'commit --help exits with code 0');
+
+// Pre-flight header noise suppression
+const gateFailClean = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use SQLite with WAL mode over NFS"');
+assert(!gateFailClean.stderr.includes('State:          UNKNOWN'), 'Standalone check-gate suppresses UNKNOWN state header noise');
+
+// 9.9 User Allow-List Sovereignty (.grill-logic/allowlist.json)
+if (!fs.existsSync('.grill-logic')) fs.mkdirSync('.grill-logic', { recursive: true });
+
+// Null safety and percentage clamping
+fs.writeFileSync('.grill-logic/allowlist.json', JSON.stringify({
+  threshold_overrides: { firewall: 25 },
+  exempt_terms: ['sqlite:wal']
+}));
+const nullSafeAl = loadUserAllowlist();
+assert(nullSafeAl.threshold_overrides.firewall === 0.25, 'Percentage threshold 25 normalized to 0.25');
+assert(nullSafeAl.exempt_terms.includes('sqlite') && nullSafeAl.exempt_terms.includes('wal'), 'exempt_terms tokenizes punctuation sqlite:wal into tokens');
+
+// Null threshold_overrides safety
+fs.writeFileSync('.grill-logic/allowlist.json', JSON.stringify({ threshold_overrides: null }));
+const nullObjAl = loadUserAllowlist();
+assert(typeof nullObjAl.threshold_overrides === 'object', 'Null threshold_overrides handled safely without crash');
+
+// Rule exemption
+fs.writeFileSync('.grill-logic/allowlist.json', JSON.stringify({ exempt_rules: ['SYS-INV-01'] }));
+const exemptCheck = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use SQLite with WAL mode over NFS for multi-instance shared database"');
+assert(exemptCheck.code === 0, 'User allow-list exempts specified rule from firewall block');
+assert(exemptCheck.stdout.includes('PASS'), 'Exempted proposal emits PASS');
+
+fs.unlinkSync('.grill-logic/allowlist.json');
+
+const restoredCheck = runCmd('node scripts/grill-state.mjs check-gate --proposal "Use SQLite with WAL mode over NFS for multi-instance shared database"');
+assert(restoredCheck.code !== 0, 'Removing allow-list restores fail-closed firewall block');
+
 // Cleanup
 runCmd('node scripts/clear-ledger.mjs --no-archive');
 
@@ -413,3 +571,5 @@ console.log('============================================================\n');
 if (failed > 0) {
   process.exit(1);
 }
+
+

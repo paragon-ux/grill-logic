@@ -20,6 +20,7 @@ Grill-Logic executes **State Machine 2 (Human Sequential Interview / HITL Engine
 3. **No Sycophancy**: If a user's choice collides with operational realities or physical limits, the agent's next turn must challenge the collision with evidence and offer a corrective fork.
 4. **Behavioral Stagnation Tracking ($S_{\text{human}}$)**: Every user turn is logged for new propositions. If the user repeats their stance for 3 consecutive rounds without introducing new constraints, the engine halts with `HUMAN_STAGNATION_ALERT` requiring a transparent diagnostic query.
 5. **Permanent Invariant Ledger**: Once all branches are settled, confirmed trade-offs are logged to `LOGICAL_LEDGER.md` as `SUPPORTED` invariants so future agent turns cannot regress.
+6. **Zero User Flags (ADR-0003)**: The developer interacts exclusively through conversational dialogue and interactive `ask_question` options. The developer is never prompted or expected to enter CLI flags. The agent handles all state engine commands behind the scenes.
 
 ---
 

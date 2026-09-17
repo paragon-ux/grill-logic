@@ -54,10 +54,10 @@ Show the user what will be created or updated:
 ## Epistemic Gate (Grill-Logic)
 
 Before generating implementation plans or code changes for architectural proposals (new infrastructure, database changes, boundary refactors):
-1. Consult `LOGICAL_LEDGER.md` for active `REJECTED` Contrastive Refutation Rules.
-2. Deconstruct into Standard Logical Form ($P_1..P_n \vdash C$).
-3. Run Multi-Round Epistemic Challenge to stress-test inferential bridges.
-4. Gate downstream execution: proceed only when status is `SUPPORTED`.
+1. Pre-flight check against `LOGICAL_LEDGER.md` (fail-closed negative constraint firewall): `node scripts/grill-state.mjs check-gate --proposal "<proposal>"`.
+2. Formulate explicit premises and conclusion via Interpretation Gate: `/add-logic [proposal]`.
+3. Stress-test inferential bridges via autonomous audit (`/self-grill [proposal]`) or interactive interview (`/grill-logic [topic]`).
+4. Gate downstream code generation: proceed only when status is `SUPPORTED` or `ACCEPTED_SOLUTION`.
 ```
 
 ### 4. Done
@@ -66,4 +66,4 @@ Inform the user that Grill-Logic is active.
 Remind them:
 - Natural language mode cues work out of the box (e.g., `self-grill: ...`, `interview me on ...`, `probe ...`).
 - Continuous gating will automatically trigger when proposing architectural changes.
-- Manual invocation is always available via `/grill-logic [proposal]`.
+- Manual invocation is always available via `/add-logic [proposal]`, `/self-grill [proposal]`, or `/grill-logic [topic]`.

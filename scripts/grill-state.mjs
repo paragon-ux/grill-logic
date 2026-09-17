@@ -27,18 +27,24 @@ export function emitDiagnostic({
   sHuman = 'N/A',
   reason,
   remediation
-}) {
+}, options = {}) {
   const border = '═'.repeat(78);
   const divider = '─'.repeat(78);
-  const output = [
-    `╔${border}╗`,
-    `║ ⛔ EPISTEMIC GATE HALT: ${code.padEnd(52)} ║`,
-    `╠${border}╣`,
+  const suppress = options.suppressSessionMetadata || (state === 'UNKNOWN' && machine === 'UNKNOWN' && targetW === 'N/A');
+
+  const headerLines = suppress ? [] : [
     `║ State:          ${state.padEnd(59)} ║`,
     `║ Active Machine: ${machine.padEnd(59)} ║`,
     `║ Actor Context:  Target W=${String(targetW).padEnd(5)}, Challenger W=${String(challengerW).padEnd(33)} ║`,
     `║ Skepticism:     Risk=${String(risk).padEnd(6)}, S_human=${String(sHuman).padEnd(39)} ║`,
-    `╟${divider}╢`,
+    `╟${divider}╢`
+  ];
+
+  const output = [
+    `╔${border}╗`,
+    `║ ⛔ EPISTEMIC GATE HALT: ${code.padEnd(52)} ║`,
+    `╠${border}╣`,
+    ...headerLines,
     `║ Diagnostic:                                                                  ║`,
     ...wrapText(reason, 74).map(line => `║   ${line.padEnd(74)} ║`),
     `╟${divider}╢`,
@@ -91,6 +97,13 @@ function generateToken(prefix = 'dmad_tok') {
 function getArgStr(args, key, fallback = '') {
   const val = args[key];
   if (typeof val === 'string') return val.trim();
+  return fallback;
+}
+
+function getArgBool(args, key, fallback = false) {
+  const val = args[key];
+  if (val === true || val === 'true') return true;
+  if (val === false || val === 'false') return false;
   return fallback;
 }
 
@@ -205,77 +218,312 @@ export function evaluateNeSyState(rawJsonString, environmentFacts = {}) {
 }
 
 // -----------------------------------------------------------------------------
-// Deterministic Invariant Solver: Physical systems laws & active ledger rules
+// Pure Node.js Standard Library Vectorizer & Dynamic Cosine Similarity Engine
+// (Zero External Dependencies, Domain-Agnostic, User Sovereignty W_human = 1.0)
 // -----------------------------------------------------------------------------
-export function solveConstraints(inputText, ledgerPath = LEDGER_FILE) {
-  const violations = [];
-  const text = inputText.toLowerCase();
 
-  // 1. Active Negative Constraint Rules in LOGICAL_LEDGER.md (Highest Precedence)
+export function tokenize(text) {
+  if (!text || typeof text !== 'string') return [];
+  const cleaned = text
+    .replace(/[*_#`~|\\\[\]{}()<>:;,?!=/.]/g, ' ')
+    .replace(/['"]/g, '');
+  return cleaned
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length >= 2); // Invariant: retain all tokens >= 2 chars (preserves S3, DB, IP, OS, CI, NFS, RPC, SQL, AWS, TLS)
+}
+
+export function escapeRegExp(string) {
+  return String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function extractFeatures(tokens) {
+  const features = [];
+  for (let i = 0; i < tokens.length; i++) {
+    features.push(tokens[i]);
+    if (i + 1 < tokens.length) {
+      features.push(`${tokens[i]}_${tokens[i + 1]}`);
+    }
+  }
+  return features;
+}
+
+export function vectorize(text, allowlist = null) {
+  const tokens = tokenize(text);
+  const rawFeatures = extractFeatures(tokens);
+  const al = allowlist !== null ? allowlist : loadUserAllowlist();
+  const exemptSet = (al && Array.isArray(al.exempt_terms) && al.exempt_terms.length > 0)
+    ? new Set(al.exempt_terms.map(t => String(t).toLowerCase()))
+    : null;
+
+  const features = exemptSet
+    ? rawFeatures.filter(f => {
+        if (exemptSet.has(f)) return false;
+        if (f.includes('_')) {
+          const parts = f.split('_');
+          if (parts.some(p => exemptSet.has(p))) return false;
+        }
+        return true;
+      })
+    : rawFeatures;
+
+  const freq = new Map();
+  for (const f of features) {
+    freq.set(f, (freq.get(f) || 0) + 1);
+  }
+  const vec = new Map();
+  for (const [term, count] of freq.entries()) {
+    const lengthWeight = Math.min(1.5, 1.0 + (term.length > 5 ? 0.2 : 0) + (term.includes('_') ? 0.3 : 0));
+    const sublinearTf = 1 + Math.log(count);
+    vec.set(term, sublinearTf * lengthWeight);
+  }
+  return vec;
+}
+
+export function computeCosineSimilarity(vecA, vecB) {
+  if (!vecA || !vecB || vecA.size === 0 || vecB.size === 0) return 0.0;
+  let dotProduct = 0.0;
+  let normASq = 0.0;
+  let normBSq = 0.0;
+
+  for (const [term, valA] of vecA.entries()) {
+    normASq += valA * valA;
+    const valB = vecB.get(term);
+    if (valB !== undefined) {
+      dotProduct += valA * valB;
+    }
+  }
+  for (const valB of vecB.values()) {
+    normBSq += valB * valB;
+  }
+  if (normASq === 0 || normBSq === 0) return 0.0;
+  const sim = dotProduct / (Math.sqrt(normASq) * Math.sqrt(normBSq));
+  return Math.min(1.0, Math.max(0.0, sim));
+}
+
+export function computeContainment(vecQuery, vecTarget) {
+  if (!vecQuery || !vecTarget || vecQuery.size === 0) return 0.0;
+  let matchedWeight = 0.0;
+  let totalQueryWeight = 0.0;
+  for (const [term, val] of vecQuery.entries()) {
+    totalQueryWeight += val;
+    if (vecTarget.has(term)) {
+      matchedWeight += val;
+    }
+  }
+  return totalQueryWeight > 0 ? matchedWeight / totalQueryWeight : 0.0;
+}
+
+const ALLOWLIST_FILE = path.join(STATE_DIR, 'allowlist.json');
+
+function normalizeThreshold(val, defaultVal) {
+  if (val === undefined || val === null) return defaultVal;
+  const num = Number(val);
+  if (!Number.isFinite(num)) return defaultVal;
+  const normalized = num > 1.0 ? num / 100.0 : num;
+  return Math.min(1.0, Math.max(0.01, normalized));
+}
+
+export function loadUserAllowlist() {
+  if (fs.existsSync(ALLOWLIST_FILE)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(ALLOWLIST_FILE, 'utf8'));
+      const rawThresholds = (data.threshold_overrides && typeof data.threshold_overrides === 'object') ? data.threshold_overrides : {};
+      const threshold_overrides = {};
+      if (rawThresholds.firewall !== undefined) {
+        threshold_overrides.firewall = normalizeThreshold(rawThresholds.firewall, 0.30);
+      }
+      if (rawThresholds.duplicate !== undefined) {
+        threshold_overrides.duplicate = normalizeThreshold(rawThresholds.duplicate, 0.50);
+      }
+
+      return {
+        exempt_terms: Array.isArray(data.exempt_terms)
+          ? data.exempt_terms.flatMap(t => tokenize(String(t)))
+          : [],
+        exempt_rules: Array.isArray(data.exempt_rules)
+          ? data.exempt_rules.map(r => String(r).toUpperCase())
+          : [],
+        threshold_overrides
+      };
+    } catch (err) {
+      console.warn(`[GRILL-STATE] Warning: Could not parse ${ALLOWLIST_FILE}: ${err.message}`);
+    }
+  }
+  return { exempt_terms: [], exempt_rules: [], threshold_overrides: {} };
+}
+
+// Built-in genesis physical system laws fallback (if LOGICAL_LEDGER.md is missing or unseeded)
+const GENESIS_SYSTEM_INVARIANTS = [
+  {
+    rule_id: 'SYS-INV-01',
+    boundary: 'POSIX fcntl byte-range locking over network storage',
+    conclusion: 'Use SQLite with WAL mode over NFS for multi-instance shared database.',
+    refuted: 'Shared SQLite database mounted over network filesystem NFS SMB CIFS. Multiple concurrent container worker processes read and write database. DO NOT use SQLite WAL mode over NFS SMB for concurrent multi-writer services.',
+    alternative: 'Use a client-server database PostgreSQL or single-writer local NVMe storage.'
+  },
+  {
+    rule_id: 'SYS-INV-02',
+    boundary: 'OS Kernel Interface Compatibility',
+    conclusion: 'Re-architect Windows network stack using Linux io_uring interface.',
+    refuted: 'Windows NT application requires high-performance asynchronous zero-copy network I/O. io_uring is a Linux-specific kernel interface; Windows NT kernel does not implement io_uring syscalls. DO NOT deploy Linux io_uring architectures on Windows runtimes.',
+    alternative: 'Use Windows I/O Completion Ports (IOCP) or cross-platform libuv.'
+  },
+  {
+    rule_id: 'SYS-INV-03',
+    boundary: 'Mobile Storage & Consistency Boundary',
+    conclusion: 'Build offline-first mobile app mirroring all 120,000 catalog items with custom two-way sync engine.',
+    refuted: 'Mobile food delivery app subway network dropouts. Full restaurant catalog contains 120000 items. 120k item JSON payload exceeds 100MB; restaurant inventory is volatile stockouts specials causing high checkout conflict rates. DO NOT mirror large volatile catalogs to mobile clients or build custom multi-master two-way sync.',
+    alternative: 'Persist client-side draft carts locally and use idempotent HTTP retry queues.'
+  }
+];
+
+export function scanLedgerSimilarity(proposalText, ledgerPath = LEDGER_FILE, options = {}) {
+  const allowlist = options.allowlist || loadUserAllowlist();
+  const results = {
+    duplicate_flags: [],
+    collision_flags: [],
+    highest_similarity: 0.0
+  };
+
+  const proposalVec = vectorize(proposalText, allowlist);
+  const tauFirewall = options.firewallThreshold ?? allowlist.threshold_overrides.firewall ?? 0.30;
+  const tauDup = options.duplicateThreshold ?? allowlist.threshold_overrides.duplicate ?? 0.50;
+
+  let scannedRuleIds = new Set();
+
   if (fs.existsSync(ledgerPath)) {
     const content = fs.readFileSync(ledgerPath, 'utf8');
     const lines = content.split('\n');
+
     for (const line of lines) {
-      if (line.includes('|') && line.includes('REJECTED')) {
-        const parts = line.split('|').map(p => p.trim());
-        if (parts.length >= 6) {
-          const argId = parts[1].replace(/[*_]/g, '');
-          const ruleCell = parts[6];
-          const match = ruleCell.toLowerCase().match(/do not (?:infer|use|replace|deploy|build|implement|create|adopt|introduce) ([^.]+?)(?: because|\.|$)/i);
-          if (match) {
-            const blockedConcept = match[1].trim();
-            const keywords = blockedConcept.split(/\s+/).filter(w => w.length > 3);
-            const hits = keywords.filter(kw => text.includes(kw));
-            if (hits.length >= 2 || (keywords.length === 1 && hits.length === 1)) {
-              violations.push({
-                rule_id: argId,
-                boundary: `Active Contrastive Rule [${argId}]`,
-                reason: ruleCell
-              });
-            }
+      if (!line.includes('|') || line.includes('| :---')) continue;
+      const parts = line.split(/(?<!\\)\|/).map(p => p.trim());
+      if (parts.length < 7) continue;
+
+      const argId = parts[1].replace(/[*_]/g, '').trim();
+      if (!argId || argId.toLowerCase() === 'arg id') continue;
+      if (allowlist.exempt_rules.includes(argId)) continue;
+      scannedRuleIds.add(argId);
+
+      const premisesRaw = parts[2].replace(/<br>/gi, ' ').replace(/[*_]/g, '');
+      const conclusionRaw = parts[3].replace(/<br>/gi, ' ').replace(/[*_]/g, '').replace(/^c\s*:\s*/i, '');
+      const statusRaw = parts[4].toUpperCase();
+      const ruleCellRaw = parts[6];
+
+      if (statusRaw.includes('REJECTED')) {
+        // Falsified Boundary Normalization (ADR-0003):
+        // Target space is strictly Clean(C_rejected) + Clean(R_refute_boundary).
+        // Strip out any advisory alternative or derived action to eliminate schema contamination.
+        const cleanRuleBoundary = ruleCellRaw
+          .replace(/(?:<br>|\n|\s+)(?:\*\*)?(?:mandated alternative|derived action|alternative)(?:\*\*)?:.+$/i, '')
+          .replace(/<br>/gi, ' ')
+          .replace(/[*_]/g, '')
+          .replace(/^(?:\*\*)?(?:contrastive refutation rule|contrastive rule)(?:\*\*)?:\s*/gi, '')
+          .trim();
+
+        const targetText = `${conclusionRaw} ${cleanRuleBoundary}`.trim();
+        const targetVec = vectorize(targetText, allowlist);
+        const conclusionVec = vectorize(conclusionRaw, allowlist);
+
+        const simConc = computeCosineSimilarity(proposalVec, conclusionVec);
+        const simTarget = computeCosineSimilarity(proposalVec, targetVec);
+        const maxSim = Math.max(simConc, simTarget);
+
+        // Count matched unigram features to gate directional containment
+        let matchedUnigrams = 0;
+        for (const token of proposalVec.keys()) {
+          if (!token.includes('_') && targetVec.has(token)) {
+            matchedUnigrams++;
           }
         }
+
+        const contRefute = (maxSim >= 0.15 && matchedUnigrams >= 2) ? computeContainment(proposalVec, targetVec) : 0.0;
+        const scoreReject = Math.max(maxSim, contRefute);
+
+        if (scoreReject >= tauFirewall) {
+          results.collision_flags.push({
+            rule_id: argId,
+            similarity: Number(scoreReject.toFixed(3)),
+            boundary: `Active Contrastive Rule [${argId}]`,
+            rule: parts[6],
+            refuted_concept: conclusionRaw
+          });
+        }
+        results.highest_similarity = Math.max(results.highest_similarity, scoreReject);
+      } else {
+        const activeText = `${conclusionRaw} ${premisesRaw}`;
+        const activeVec = vectorize(activeText, allowlist);
+        const conclusionVec = vectorize(conclusionRaw, allowlist);
+        const simActive = computeCosineSimilarity(proposalVec, activeVec);
+        const simConc = computeCosineSimilarity(proposalVec, conclusionVec);
+        const scoreActive = Math.max(simActive, simConc);
+
+        if (scoreActive >= tauDup) {
+          results.duplicate_flags.push({
+            arg_id: argId,
+            similarity: Number(scoreActive.toFixed(3)),
+            status: parts[4].replace(/[*_]/g, ''),
+            conclusion: conclusionRaw
+          });
+        }
+        results.highest_similarity = Math.max(results.highest_similarity, scoreActive);
       }
     }
   }
 
-  // 2. Built-in Physical Systems Invariants
-  // Invariant 1: SQLite WAL over network storage (NFS/SMB) with concurrent writers
-  if ((text.includes('sqlite') || text.includes('sqlite3')) && 
-      (text.includes('nfs') || text.includes('network file') || text.includes('smb') || text.includes('cifs')) &&
-      (text.includes('concurrent') || text.includes('multi') || text.includes('cluster') || text.includes('workers') || text.includes('containers'))) {
-    violations.push({
-      rule_id: 'SYS-INV-01',
-      boundary: 'POSIX fcntl byte-range locking over network storage',
-      reason: 'SQLite WAL mode and multi-process write locks fail over NFS; network jitter silently leaks or corrupts database headers.'
-    });
+  // Check built-in fallback genesis invariants if not already covered in ledger
+  for (const sys of GENESIS_SYSTEM_INVARIANTS) {
+    if (scannedRuleIds.has(sys.rule_id) || allowlist.exempt_rules.includes(sys.rule_id)) continue;
+
+    const targetText = `${sys.conclusion} ${sys.refuted}`.trim();
+    const targetVec = vectorize(targetText, allowlist);
+    const conclusionVec = vectorize(sys.conclusion, allowlist);
+
+    const simConc = computeCosineSimilarity(proposalVec, conclusionVec);
+    const simTarget = computeCosineSimilarity(proposalVec, targetVec);
+    const maxSim = Math.max(simConc, simTarget);
+
+    let matchedUnigrams = 0;
+    for (const token of proposalVec.keys()) {
+      if (!token.includes('_') && targetVec.has(token)) {
+        matchedUnigrams++;
+      }
+    }
+
+    const contRefute = (maxSim >= 0.15 && matchedUnigrams >= 2) ? computeContainment(proposalVec, targetVec) : 0.0;
+    const scoreReject = Math.max(maxSim, contRefute);
+
+    if (scoreReject >= tauFirewall) {
+      const cleanConclusion = sys.conclusion.replace(/^Use\s+/i, '').replace(/\.$/, '');
+      results.collision_flags.push({
+        rule_id: sys.rule_id,
+        similarity: Number(scoreReject.toFixed(3)),
+        boundary: sys.boundary,
+        rule: `DO NOT deploy ${cleanConclusion}. Mandated Alternative: ${sys.alternative}`,
+        refuted_concept: sys.conclusion
+      });
+    }
+    results.highest_similarity = Math.max(results.highest_similarity, scoreReject);
   }
 
-  // Invariant 2: Linux io_uring on Windows NT kernel
-  if ((text.includes('io_uring') || text.includes('iouring')) &&
-      (text.includes('windows') || text.includes('win32') || text.includes('ntfs'))) {
-    violations.push({
-      rule_id: 'SYS-INV-02',
-      boundary: 'OS Kernel Interface Compatibility',
-      reason: 'io_uring is a Linux-specific kernel interface. Windows NT uses I/O Completion Ports (IOCP) for asynchronous I/O.'
-    });
-  }
+  return results;
+}
 
-  // Invariant 3: Mobile distributed two-way catalog sync
-  if ((text.includes('offline-first') || text.includes('offline')) &&
-      (text.includes('react native') || text.includes('mobile') || text.includes('ios') || text.includes('android')) &&
-      (text.includes('mirror') || text.includes('sync engine') || text.includes('two-way reconciliation')) &&
-      (text.includes('120,000') || text.includes('catalog') || text.includes('all items'))) {
-    violations.push({
-      rule_id: 'SYS-INV-03',
-      boundary: 'Mobile Storage & Consistency Boundary',
-      reason: 'Mirroring large volatile catalogs (100k+ items) to mobile clients causes payload bloat (100MB+) and high checkout failure. Requires client draft persistence with idempotent retry queues.'
-    });
-  }
+export function solveConstraints(inputText, ledgerPath = LEDGER_FILE, options = {}) {
+  const scan = scanLedgerSimilarity(inputText, ledgerPath, options);
+  const violations = scan.collision_flags.map(c => ({
+    rule_id: c.rule_id,
+    boundary: c.boundary,
+    reason: c.rule,
+    similarity: c.similarity
+  }));
 
   return {
     satisfied: violations.length === 0,
-    violations
+    violations,
+    duplicate_flags: scan.duplicate_flags,
+    highest_similarity: scan.highest_similarity
   };
 }
 
@@ -283,8 +531,17 @@ export function solveConstraints(inputText, ledgerPath = LEDGER_FILE) {
 // CLI Commands
 // -----------------------------------------------------------------------------
 export function cmdInit(args) {
+  if (args.help || args.h) {
+    console.log(`Grill-State init:
+  Initialize epistemic session for autonomous or human state machines.
+  Usage: node scripts/grill-state.mjs init --machine <autonomous|human> --input "<text>"
+  Aliases: --input, --prompt, --proposal
+`);
+    process.exit(0);
+  }
+
   const machine = getArgStr(args, 'machine').toUpperCase();
-  const input = getArgStr(args, 'input');
+  const input = getArgStr(args, 'input') || getArgStr(args, 'prompt') || getArgStr(args, 'proposal');
 
   if (machine !== 'AUTONOMOUS' && machine !== 'HUMAN') {
     emitDiagnostic({
@@ -311,11 +568,18 @@ export function cmdInit(args) {
   const dispatchToken = isAutonomous ? generateToken('dmad_tok') : null;
 
   const existingState = loadState();
-  const argId = getArgStr(args, 'arg-id') || existingState?.arg_id || null;
-  const validation = existingState?.validation || null;
-  const sourcePrompt = existingState?.source_prompt || input;
-  const premises = existingState?.premises || null;
-  const conclusion = existingState?.conclusion || null;
+  const explicitArgId = getArgStr(args, 'arg-id');
+  const isMatchingSession = existingState && (
+    (explicitArgId && explicitArgId.toUpperCase() === existingState.arg_id?.toUpperCase()) ||
+    existingState.source_prompt === input ||
+    existingState.input_text === input ||
+    (existingState.conclusion && existingState.conclusion === input)
+  );
+  const argId = explicitArgId || (isMatchingSession ? existingState?.arg_id : null);
+  const validation = isMatchingSession ? existingState?.validation : null;
+  const sourcePrompt = isMatchingSession ? (existingState?.source_prompt || input) : input;
+  const premises = isMatchingSession ? existingState?.premises : null;
+  const conclusion = isMatchingSession ? existingState?.conclusion : null;
 
   const state = {
     version: '2.2.0',
@@ -521,8 +785,8 @@ export function cmdRecordSubagentAudit(args) {
   } else if (state.current_state === 'AWAITING_SUBAGENT_EVAL') {
     // Evaluate structural S_LLM if parameters provided (Round 2)
     if (unearnedConcessions !== null || totalConcessions !== null || unexaminedCounter !== null || totalCounter !== null || hypothesisShifted !== null) {
-      const sSyco = (totalConcessions && totalConcessions > 0) ? (Number(unearnedConcessions || 0) / totalConcessions) : 0.0;
-      const sConf = (totalCounter && totalCounter > 0) ? (Number(unexaminedCounter || 0) / totalCounter) : 0.0;
+      const sSyco = (totalConcessions && totalConcessions > 0) ? Math.min(1.0, Math.max(0.0, Number(unearnedConcessions || 0) / totalConcessions)) : 0.0;
+      const sConf = (totalCounter && totalCounter > 0) ? Math.min(1.0, Math.max(0.0, Number(unexaminedCounter || 0) / totalCounter)) : 0.0;
       const fEinstellung = hypothesisShifted === false ? 1 : 0;
       let risk = 'LOW';
       if (fEinstellung === 1 || sSyco >= 0.5 || sConf >= 0.5) {
@@ -785,7 +1049,16 @@ export function cmdRecordDiagnosticAck() {
 }
 
 export function cmdAddLogic(args) {
-  const prompt = getArgStr(args, 'prompt') || getArgStr(args, 'input');
+  if (args.help || args.h) {
+    console.log(`Grill-State add-logic:
+  Interpretation gate formulating baseline premises and conclusions.
+  Usage: node scripts/grill-state.mjs add-logic --prompt "<text>" [--premises '<JSON>'] [--conclusion "<text>"] [--arg-id <ID>] [--allow-duplicate true]
+  Aliases: --prompt, --proposal, --input
+`);
+    process.exit(0);
+  }
+
+  const prompt = getArgStr(args, 'prompt') || getArgStr(args, 'proposal') || getArgStr(args, 'input');
   const premisesStr = getArgStr(args, 'premises');
   const conclusion = getArgStr(args, 'conclusion');
 
@@ -810,8 +1083,8 @@ export function cmdAddLogic(args) {
       if (!Array.isArray(premises)) premises = [cleanPremisesStr];
     } catch {
       if (cleanPremisesStr.startsWith('[') && cleanPremisesStr.endsWith(']')) {
-        const inner = cleanPremisesStr.slice(1, -1).trim();
-        premises = inner.split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+        const matches = [...cleanPremisesStr.slice(1, -1).matchAll(/(?:["'])(.*?)(?:["'])(?:\s*,\s*|$)/g)];
+        premises = matches.length > 0 ? matches.map(m => m[1].trim()) : cleanPremisesStr.slice(1, -1).split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
       } else {
         premises = [premisesStr];
       }
@@ -820,50 +1093,81 @@ export function cmdAddLogic(args) {
     premises = [prompt];
   }
 
-  // Deduplication check against LOGICAL_LEDGER.md
-  if (fs.existsSync(LEDGER_FILE)) {
-    const ledgerContent = fs.readFileSync(LEDGER_FILE, 'utf8');
-    const promptLower = prompt.toLowerCase();
-    const lines = ledgerContent.split('\n');
-    for (const line of lines) {
-      if (line.includes('|') && !line.includes('| :---')) {
-        const parts = line.split('|').map(p => p.trim());
-        if (parts.length >= 4) {
-          const argId = parts[1].replace(/[*_]/g, '');
-          const existingP = parts[2].toLowerCase();
-          if (existingP.includes(promptLower) || promptLower.includes(existingP.replace(/\*\*p\*:\s*/i, ''))) {
-            console.warn(`[GRILL-STATE] Warning: Possible duplicate of ${argId} already in ledger.`);
-          }
-        }
+  // Deduplication check against LOGICAL_LEDGER.md using scanLedgerSimilarity
+  const scan = scanLedgerSimilarity(prompt, LEDGER_FILE);
+  const allowDup = getArgBool(args, 'allow-duplicate') || (args['allow-duplicate'] === 'true');
+  let explicitArgId = getArgStr(args, 'arg-id');
+  const activeMachine = (getArgStr(args, 'machine') || '').toUpperCase() === 'AUTONOMOUS' ? 'AUTONOMOUS_DMAD' : 'HUMAN_HITL';
+
+  if (scan.duplicate_flags.length > 0 && !allowDup && !explicitArgId) {
+    const dup = scan.duplicate_flags[0];
+    if (activeMachine === 'AUTONOMOUS_DMAD') {
+      if (dup.similarity > 0.85) {
+        explicitArgId = dup.arg_id;
+        console.log(`[AUTONOMOUS_DEDUP] Proposal matches [${dup.arg_id}] (${(dup.similarity * 100).toFixed(1)}% >= 85%). Auto-updating in-place.`);
+      } else {
+        console.log(`[AUTONOMOUS_DEDUP] Proposal resembles [${dup.arg_id}] (${(dup.similarity * 100).toFixed(1)}%). Auto-resolving as distinct proposal.`);
       }
+    } else {
+      emitDiagnostic({
+        code: 'POTENTIAL_DUPLICATE_FLAG',
+        reason: `Proposal semantically matches existing entry [${dup.arg_id}] (${(dup.similarity * 100).toFixed(1)}% >= threshold 50%): "${dup.conclusion}".`,
+        remediation: `Review [${dup.arg_id}] in LOGICAL_LEDGER.md. State your preference in plain English: "Refine ${dup.arg_id}" to update in-place, or "Keep separate" to formulate as a new entry.`
+      }, { suppressSessionMetadata: true });
+      process.exit(1);
+    }
+  }
+
+  let ledgerContent = '';
+  if (fs.existsSync(LEDGER_FILE)) {
+    ledgerContent = fs.readFileSync(LEDGER_FILE, 'utf8');
+  }
+
+  if (explicitArgId && ledgerContent) {
+    const checkRegex = new RegExp(`\\|\\s*\\*\\*${escapeRegExp(explicitArgId)}\\*\\*\\s*\\|`, 'i');
+    if (!checkRegex.test(ledgerContent)) {
+      emitDiagnostic({
+        code: 'ARGUMENT_NOT_FOUND',
+        reason: `Specified argument ID '${explicitArgId}' was not found in active ledger for in-place update.`,
+        remediation: 'Omit `--arg-id` to auto-allocate the next sequential ID, or supply an existing argument ID from LOGICAL_LEDGER.md.'
+      }, { suppressSessionMetadata: true });
+      process.exit(2);
     }
   }
 
   let nextIdNum = 1;
-  let ledgerContent = '';
-  if (fs.existsSync(LEDGER_FILE)) {
-    ledgerContent = fs.readFileSync(LEDGER_FILE, 'utf8');
+  if (ledgerContent) {
     const argMatches = [...ledgerContent.matchAll(/\*\*ARG-(\d+)\*\*/g)];
     if (argMatches.length > 0) {
       nextIdNum = Math.max(...argMatches.map(m => parseInt(m[1], 10))) + 1;
     }
   }
-  const argId = `ARG-${String(nextIdNum).padStart(2, '0')}`;
+  const argId = explicitArgId || `ARG-${String(nextIdNum).padStart(2, '0')}`;
 
-  const cleanP = premises.map((p, idx) => typeof p === 'object' ? `**P${idx+1}**: ${p.statement || JSON.stringify(p)}` : `**P${idx+1}**: ${p}`).join('<br>');
-  const cleanC = conclusion ? `**C**: ${conclusion}` : `**C**: ${prompt}`;
+  const cleanP = premises.map((p, idx) => {
+    const raw = typeof p === 'object' ? (p.statement || JSON.stringify(p)) : String(p);
+    return `**P${idx+1}**: ${raw.replace(/\|/g, '\\|').replace(/\n/g, ' ')}`;
+  }).join('<br>');
+  const rawC = conclusion ? conclusion : prompt;
+  const cleanC = `**C**: ${String(rawC).replace(/\|/g, '\\|').replace(/\n/g, ' ')}`;
 
   const row = `| **${argId}** | ${cleanP} | ${cleanC} | **FORMULATED** | **Interpretation Gate** (Human ↔ LLM baseline confirmed) | Baseline registered. Awaiting validation & challenge. |`;
 
-  // Append row right after active decision table header if table exists
+  // Update existing row in-place if argId already exists in table, else append right after active decision table header
   if (ledgerContent.includes('| :--- | :--- | :--- | :--- | :--- | :--- |')) {
-    const tableHeaderIndex = ledgerContent.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
-    const insertPos = tableHeaderIndex + '| :--- | :--- | :--- | :--- | :--- | :--- |'.length;
-    const updatedLedger = ledgerContent.slice(0, insertPos) + '\n' + row + ledgerContent.slice(insertPos);
+    let updatedLedger;
+    let cleaned = ledgerContent.replace(/\*\s*\(No active decisions recorded yet.*?\)\s*\*\n?/i, '');
+    const rowRegex = new RegExp(`\\|\\s*\\*\\*${escapeRegExp(argId)}\\*\\*\\s*\\|[^\\n]*`, 'gi');
+    if (rowRegex.test(cleaned)) {
+      updatedLedger = cleaned.replace(rowRegex, row);
+    } else {
+      const tableHeaderIndex = cleaned.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
+      const insertPos = tableHeaderIndex + '| :--- | :--- | :--- | :--- | :--- | :--- |'.length;
+      updatedLedger = cleaned.slice(0, insertPos) + '\n' + row + cleaned.slice(insertPos);
+    }
     fs.writeFileSync(LEDGER_FILE, updatedLedger, 'utf8');
   }
 
-  const activeMachine = (getArgStr(args, 'machine') || '').toUpperCase() === 'AUTONOMOUS' ? 'AUTONOMOUS_DMAD' : 'HUMAN_HITL';
   const canonicalState = activeMachine === 'AUTONOMOUS_DMAD' ? 'S_A0B_ADD_LOGIC' : 'S_U0B_ADD_LOGIC';
 
   const state = {
@@ -987,12 +1291,34 @@ export function cmdRecordProceduralAdvance(args) {
     process.exit(1);
   }
 
+  if (state.active_machine === 'HUMAN_HITL' && (state.turn_count > 0 || state.current_state === 'AWAIT_USER_SELECTION' || state.current_state === 'DIAGNOSTIC_REQUIRED')) {
+    emitDiagnostic({
+      code: 'MACHINE_MODE_MISMATCH',
+      reason: 'Cannot procedurally advance an active Human HITL interactive interview.',
+      remediation: 'Conclude human interview via decision tree progression or switch to autonomous mode.'
+    });
+    process.exit(1);
+  }
+
+  // Promote machine to AUTONOMOUS_DMAD upon procedural advance
+  state.active_machine = 'AUTONOMOUS_DMAD';
+
   const token = getArgStr(args, 'token');
   if (state.dispatch_token && (!token || token !== state.dispatch_token)) {
     emitDiagnostic({
       code: 'DISPATCH_TOKEN_MISMATCH',
       reason: `Mismatched dispatch token: '${token}'. Expected: '${state.dispatch_token}'.`,
       remediation: 'Provide matching session dispatch token.'
+    });
+    process.exit(1);
+  }
+
+  // If an active challenge is pending, cannot procedurally advance
+  if (state.conclusion_status === 'CHALLENGED') {
+    emitDiagnostic({
+      code: 'ACTIVE_CHALLENGE_PENDING',
+      reason: 'Cannot procedurally advance while an active challenge (CHALLENGED) is pending response from proposer.',
+      remediation: 'Proposer must respond with counter-hypothesis C-prime via record-llm-response before subagent evaluates.'
     });
     process.exit(1);
   }
@@ -1092,13 +1418,22 @@ export function cmdSignoffSubagent(args) {
 }
 
 export function cmdCheckGate(args) {
-  const proposal = getArgStr(args, 'proposal');
+  if (args.help || args.h) {
+    console.log(`Grill-State check-gate:
+  Pre-flight epistemic firewall & deterministic invariant solver.
+  Usage: node scripts/grill-state.mjs check-gate --proposal "<text>"
+  Aliases: --proposal, --prompt, --input
+`);
+    process.exit(0);
+  }
+
+  const proposal = getArgStr(args, 'proposal') || getArgStr(args, 'prompt') || getArgStr(args, 'input');
   if (!proposal) {
     emitDiagnostic({
       code: 'INPUT_GATE_HALT',
       reason: 'check-gate requires `--proposal "<text>"` to audit.',
-      remediation: 'Pass the architectural proposal to audit.'
-    });
+      remediation: 'Pass the architectural proposal to audit. Example: `node scripts/grill-state.mjs check-gate --proposal "Use Redis for caching"`'
+    }, { suppressSessionMetadata: true });
     process.exit(1);
   }
 
@@ -1110,7 +1445,7 @@ export function cmdCheckGate(args) {
       code: v.rule_id.startsWith('SYS-') ? 'INVARIANT_SOLVER_VIOLATION' : 'EPISTEMIC_FIREWALL_VIOLATION',
       reason: `Deterministic Invariant Solver detected violation [${v.rule_id}]: "${v.reason}". Boundary: "${v.boundary}".`,
       remediation: `Halt execution immediately. Reject proposal or cite rule ${v.rule_id} to user and adopt supported alternative.`
-    });
+    }, { suppressSessionMetadata: true });
     process.exit(1);
   }
 
@@ -1118,6 +1453,14 @@ export function cmdCheckGate(args) {
 }
 
 export function cmdCommit(args) {
+  if (args.help || args.h) {
+    console.log(`Grill-State commit:
+  Commit session verdict and contrastive rule to LOGICAL_LEDGER.md.
+  Usage: node scripts/grill-state.mjs commit --status <SUPPORTED|REJECTED|ACCEPTED_SOLUTION> [--rule "<rule>"]
+`);
+    process.exit(0);
+  }
+
   const state = loadState();
   if (!state) {
     emitDiagnostic({
@@ -1150,6 +1493,8 @@ export function cmdCommit(args) {
     process.exit(1);
   }
 
+  const isFormallyInvalid = state.validation?.result === 'formally_invalid';
+
   // Fail-Closed Epistemic Guards:
   if (state.active_machine === 'AUTONOMOUS_DMAD') {
     if (state.current_state === 'AWAITING_LLM_RESPONSE') {
@@ -1173,8 +1518,7 @@ export function cmdCommit(args) {
       process.exit(1);
     }
 
-    const isFormallyInvalid = state.validation?.result === 'formally_invalid';
-    if ((!state.probes_executed || state.probes_executed.length === 0) && !(status === 'REJECTED' && isFormallyInvalid)) {
+    if ((!state.probes_executed || state.probes_executed.length === 0) && !(status === 'REJECTED' && isFormallyInvalid) && !state.procedural_clearance) {
       emitDiagnostic({
         code: 'EMPIRICAL_PROBE_MISSING',
         machine: state.active_machine,
@@ -1185,27 +1529,41 @@ export function cmdCommit(args) {
       process.exit(1);
     }
 
-    // Asymmetric Override Guard: LLM (W=0.2) cannot commit SUPPORTED / ACCEPTED_SOLUTION if subagent rejected
-    if ((status === 'SUPPORTED' || status === 'ACCEPTED_SOLUTION') && state.conclusion_status === 'REJECTED') {
+    const isPositive = status === 'SUPPORTED' || status === 'ACCEPTED_SOLUTION' || status === 'TENTATIVE_SOLUTION';
+
+    // Formal Invalidity Guard: Formally invalid arguments can never commit positive status
+    if (isPositive && isFormallyInvalid) {
+      emitDiagnostic({
+        code: 'FORMAL_INVALIDITY_UNRESOLVED',
+        machine: state.active_machine,
+        state: state.current_state,
+        reason: 'Attempted to commit positive status on an argument evaluated as formally_invalid by deterministic validation.',
+        remediation: 'Reformulate deductive structure or accept REJECTED status.'
+      });
+      process.exit(1);
+    }
+
+    // Asymmetric Override Guard: LLM (W=0.2) cannot commit positive status if subagent rejected
+    if (isPositive && state.conclusion_status === 'REJECTED') {
       emitDiagnostic({
         code: 'ASYMMETRIC_OVERRIDE_FORBIDDEN',
         machine: state.active_machine,
         state: state.current_state,
         targetW: state.epistemic_context.target_w,
         challengerW: state.epistemic_context.challenger_w,
-        reason: 'Target W_LLM (0.2) attempted to mark proposal SUPPORTED over Challenger rejection without empirical counter-proof.',
+        reason: 'Target W_LLM (0.2) attempted to mark proposal positive over Challenger rejection without empirical counter-proof.',
         remediation: 'Either accept the subagent REJECTED verdict or provide a falsification counter-probe.'
       });
       process.exit(1);
     }
 
-    // Subagent Signoff Guard: Cannot commit SUPPORTED / ACCEPTED_SOLUTION without subagent signoff
-    if ((status === 'SUPPORTED' || status === 'ACCEPTED_SOLUTION') && !state.subagent_signoff) {
+    // Subagent Signoff Guard: Cannot commit positive status without subagent signoff
+    if (isPositive && !state.subagent_signoff) {
       emitDiagnostic({
         code: 'SIGNOFF_TOKEN_MISSING',
         machine: state.active_machine,
         state: state.current_state,
-        reason: 'Cannot commit SUPPORTED or ACCEPTED_SOLUTION status without explicit subagent sign-off in state.',
+        reason: 'Cannot commit positive status without explicit subagent sign-off in state.',
         remediation: 'Subagent must submit conclusion_status: "SUPPORTED" in Round 2.'
       });
       process.exit(1);
@@ -1264,12 +1622,13 @@ export function cmdCommit(args) {
   const conclusionText = state.conclusion || (isAuto ? 'Implement proposal' : 'Aligned architecture');
   const cleanConclusion = conclusionText.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
-  const isFormallyInvalid = state.validation?.result === 'formally_invalid';
   const auditEvidence = isFormallyInvalid && (!state.probes_executed || state.probes_executed.length === 0)
     ? `**Deterministic Solver**: Formally invalid (${state.validation?.notes || 'Invariant failed'})`
-    : (isAuto
-        ? `**Subagent Challenger (W_subagent=0.8)**: ${probeSummary || 'Standard evaluation'}`
-        : `**Human HITL (W_human=1.0)**: Decision tree aligned`);
+    : (state.procedural_clearance
+        ? `**Procedural Clearance** (No counter on table; unobjected)`
+        : (isAuto
+            ? `**Subagent Challenger (W_subagent=0.8)**: ${probeSummary || 'Standard evaluation'}`
+            : `**Human HITL (W_human=1.0)**: Decision tree aligned`));
 
   let statusDisplay = `**${status}**`;
   if (status === 'REJECTED') {
@@ -1281,18 +1640,22 @@ export function cmdCommit(args) {
   }
 
   const cleanPremises = state.premises && state.premises.length > 0
-    ? state.premises.map((p, idx) => typeof p === 'object' ? `**P${idx+1}**: ${p.statement || JSON.stringify(p)}` : `**P${idx+1}**: ${p}`).join('<br>')
+    ? state.premises.map((p, idx) => {
+        const raw = typeof p === 'object' ? (p.statement || JSON.stringify(p)) : String(p);
+        return `**P${idx+1}**: ${raw.replace(/\|/g, '\\|').replace(/\n/g, ' ')}`;
+      }).join('<br>')
     : `**P**: ${cleanInput}`;
 
   const row = `| **${argId}** | ${cleanPremises} | **C**: ${cleanConclusion} | ${statusDisplay} | ${auditEvidence} | ${cleanRule || 'Verified'} |`;
 
   let updatedLedger;
-  const rowRegex = new RegExp(`\\|\\s*\\*\\*${argId}\\*\\*\\s*\\|[^\\n]*`, 'g');
-  if (rowRegex.test(ledgerContent)) {
-    updatedLedger = ledgerContent.replace(rowRegex, row);
+  let cleaned = ledgerContent.replace(/\*\s*\(No active decisions recorded yet.*?\)\s*\*\n?/i, '');
+  const rowRegex = new RegExp(`\\|\\s*\\*\\*${escapeRegExp(argId)}\\*\\*\\s*\\|[^\\n]*`, 'gi');
+  if (rowRegex.test(cleaned)) {
+    updatedLedger = cleaned.replace(rowRegex, row);
   } else {
     // Append row right after active decision table header
-    const tableHeaderIndex = ledgerContent.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
+    const tableHeaderIndex = cleaned.indexOf('| :--- | :--- | :--- | :--- | :--- | :--- |');
     if (tableHeaderIndex === -1) {
       emitDiagnostic({
         code: 'LEDGER_MALFORMED',
@@ -1302,7 +1665,7 @@ export function cmdCommit(args) {
       process.exit(1);
     }
     const insertPos = tableHeaderIndex + '| :--- | :--- | :--- | :--- | :--- | :--- |'.length;
-    updatedLedger = ledgerContent.slice(0, insertPos) + '\n' + row + ledgerContent.slice(insertPos);
+    updatedLedger = cleaned.slice(0, insertPos) + '\n' + row + cleaned.slice(insertPos);
   }
 
   fs.writeFileSync(LEDGER_FILE, updatedLedger, 'utf8');
@@ -1313,11 +1676,27 @@ export function cmdCommit(args) {
 }
 
 // CLI Arg Parser Dispatcher
-function parseArgs(args) {
+export function parseArgs(args) {
   const parsed = {};
   for (let i = 0; i < args.length; i++) {
-    if (args[i].startsWith('--')) {
-      const key = args[i].slice(2);
+    const raw = args[i];
+    if (raw === '-h' || raw === '--help') {
+      parsed['help'] = true;
+      continue;
+    }
+    if (raw.startsWith('--')) {
+      const stripped = raw.slice(2);
+      const eqIdx = stripped.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = stripped.slice(0, eqIdx);
+        let val = stripped.slice(eqIdx + 1);
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        parsed[key] = val;
+        continue;
+      }
+      const key = stripped;
       if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
         let val = String(args[++i]);
         // Handle shells (like Windows cmd.exe) that do not preserve single quotes or split JSON on spaces
@@ -1348,7 +1727,13 @@ function parseArgs(args) {
             }
           }
         }
+        if (typeof val === 'string' && val.startsWith("'") && val.endsWith("'") && val.length >= 2) {
+          val = val.slice(1, -1).trim();
+        }
         parsed[key] = val;
+        if (key === 'payload-file' && fs.existsSync(val)) {
+          parsed['payload'] = fs.readFileSync(val, 'utf8').trim();
+        }
       } else {
         parsed[key] = true;
       }
@@ -1365,6 +1750,24 @@ const isMain = process.argv[1] && (
 
 if (isMain) {
   const action = process.argv[2];
+  if (!action || action === '--help' || action === '-h') {
+    console.log(`Grill-State CLI (Epistemic State Engine & Deterministic Invariant Solver):
+  init                       --machine <autonomous|human> --input "<text>"
+  status                     Show current epistemic state
+  add-logic                  --prompt "<text>" [--premises '<JSON>'] [--conclusion "<text>"] [--arg-id <ID>] [--allow-duplicate true]
+  validate-nesy              --payload '<JSON>' [--facts '<JSON>']
+  record-procedural-advance  --token <tok>
+  record-subagent-audit      --token <tok> --payload '<JSON>'
+  record-llm-response        --token <tok> --payload '<JSON>'
+  record-user-turn           --new-prop <true|false> [--choice "<text>"]
+  record-diagnostic-ack
+  signoff-subagent           --token <tok>
+  check-gate                 --proposal "<text>"
+  commit                     --status <SUPPORTED|REJECTED|ACCEPTED_SOLUTION> [--rule "<rule>"]
+`);
+    process.exit(0);
+  }
+
   const parsedArgs = parseArgs(process.argv.slice(3));
 
   switch (action) {
@@ -1372,7 +1775,7 @@ if (isMain) {
     cmdInit(parsedArgs);
     break;
   case 'status':
-    cmdStatus();
+    cmdStatus(parsedArgs);
     break;
   case 'add-logic':
     cmdAddLogic(parsedArgs);
@@ -1393,7 +1796,7 @@ if (isMain) {
     cmdRecordUserTurn(parsedArgs);
     break;
   case 'record-diagnostic-ack':
-    cmdRecordDiagnosticAck();
+    cmdRecordDiagnosticAck(parsedArgs);
     break;
   case 'signoff-subagent':
     cmdSignoffSubagent(parsedArgs);
@@ -1406,20 +1809,8 @@ if (isMain) {
     cmdCommit(parsedArgs);
     break;
   default:
-    console.log(`Grill-State CLI:
-  init                       --machine <autonomous|human> --input "<text>"
-  status
-  add-logic                  --prompt "<text>" [--premises '<JSON>'] [--conclusion "<text>"]
-  validate-nesy              --payload '<JSON>' [--facts '<JSON>']
-  record-procedural-advance  --token <tok>
-  record-subagent-audit      --token <tok> --payload '<JSON>'
-  record-llm-response        --token <tok> --payload '<JSON>'
-  record-user-turn           --new-prop <true|false> [--choice "<text>"]
-  record-diagnostic-ack
-  signoff-subagent           --token <tok>
-  check-gate                 --proposal "<text>"
-  commit                     --status <SUPPORTED|REJECTED|ACCEPTED_SOLUTION> [--rule "<rule>"]
-`);
+    console.log(`Unknown action '${action}'. Run \`node scripts/grill-state.mjs --help\` for usage.`);
+    process.exit(1);
     break;
   }
 }

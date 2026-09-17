@@ -24,6 +24,9 @@ Self-Grill executes **State Machine 1 (Autonomous AI Iterative Self-Prompting)**
 4. **Dynamic Skepticism Timing**: $S_{\text{LLM}}$ measures behavioral reaction to pushback (sycophancy, confirmation bias, fixed mental set). It **cannot be scored at Turn 0** before the target LLM has responded to a challenge.
 5. **Token-Locked Handshake**: State transitions are locked to a one-time `dispatch_token` in `.grill-logic/state.json`. Unsigned commits fail closed.
 6. **Hard Gating**: If evidence refutes the proposal, `REJECTED` is committed to `LOGICAL_LEDGER.md` and code generation is **hard-blocked**.
+7. **Strict 90/10 Invariant & Asymmetric CoT (ADR-0002)**: The challenger executes Backward Inversion CoT ($C \implies \neg P$) and is strictly forbidden from proposing solutions or recommendations in Round 1 (0% solution). The proposer executes Forward Synthesis CoT ($(P + \text{Bounds}) \implies C'$).
+8. **Frontier-Depletion Closure (ADR-0002)**: Verification terminates when the epistemic frontier of unaddressed contradictions is depleted ($\mathcal{F} = \emptyset$). Max 2 autonomous rounds before mandatory escalation to the human sovereign ($W_{\text{human}}=1.0$).
+9. **Zero User Flags & Autonomous Deduplication (ADR-0003)**: Self-Grill operates hands-free. If a near-duplicate is detected during Step 0, the state engine auto-resolves it (updating in-place if similarity $> 0.85$, or auto-disambiguating if $0.50 \le \text{sim} \le 0.85$). The human is never prompted for CLI flags.
 
 ---
 
@@ -33,40 +36,48 @@ Self-Grill executes **State Machine 1 (Autonomous AI Iterative Self-Prompting)**
 [Proposal Ingested]
         │
         ▼
-1. Initialize State & Validate Input Gate ──> (Fails closed if empty)
+0. Interpretation Gate (/add-logic) ──> (Human ↔ LLM baseline confirmed; FORMULATED)
         │
         ▼
-2. Deconstruct Axioms (Stated vs. Hidden)
+1. Deterministic Validation (NeSy Solver) ──> (S_A0C_VALIDATION; Fails closed if invalid)
         │
         ▼
-3. Round 1: Dispatch Ephemeral Subagent Challenger with Token
+2. Initialize State & Issue Token (S_A1_TOKEN_ISSUE)
         │
         ▼
-4. Subagent Executes Empirical Probe & Records Challenge
-   (--verdict CHALLENGE_ISSUED, S_LLM unassessed)
+3. Round 1: Dispatch Ephemeral Subagent Challenger (S_A2_SPAWN_CHALLENGER / S_A3)
         │
         ▼
-5. Round 2: Target LLM Confrontation
-   - Concede (--type concede) ──> REJECTED
+4. Subagent Executes Empirical Probe & Records Challenge (S_A3_ROUND_1_CHALLENGE)
+   (--conclusion_status CHALLENGED, S_LLM unassessed)
+        │
+        ▼
+5. Round 2: Proposer Confrontation (S_A4_ROUND_2_PROPOSER_CONFRONTATION)
+   - Concede (--type concede) ──> S_A6_REJECTION
    - Counter-Hypothesis (--type counter) ──> Propose C' addressing empirical probe
         │
         ▼
-6. Subagent Dynamic S_LLM Evaluation & Follow-up Probe
+6. Subagent Dynamic S_LLM Evaluation & Follow-up Probe (S_A5_SUBAGENT_EVAL)
    - Evaluates sycophancy, confirmation bias, fixed mental set on LLM response
    - Probes C' for soundness
-   - Logs verdict: SUPPORTED (with signoff) or REJECTED
+   - Logs verdict: SUPPORTED (S_A7_CONCORDANCE_SIGN_OFF) or REJECTED (S_A6)
         │
         ▼
-7. Commit to LOGICAL_LEDGER.md & Gate Downstream Execution
+7. Commit to LOGICAL_LEDGER.md & Gate Downstream Execution (S_A8_HUMAN_DELIVERY)
 ```
 
-### Step 1: Initialize Session & Input Gate
-Run the state engine with the proposal:
+### Step 0: Mandatory Interpretation Gate (`/add-logic`)
+Before dispatching autonomous subagents, verify whether the proposal has been formulated in `LOGICAL_LEDGER.md`.
+- **If unformulated**: Execute `/add-logic [proposal]`. Decompose premises ($P_1 \dots P_n$) and conclusion ($C$), confirm baseline with human user verbatim, and commit as `FORMULATED`.
+- **Deterministic Validation**: Run `node scripts/grill-state.mjs validate-nesy --payload '<JSON>'`. Only proceed to autonomous dispatch if structurally `valid`.
+
+### Step 1: Initialize Session & Input Gate (S_A1_TOKEN_ISSUE)
+Run the state engine with the formulated proposal:
 ```bash
 node scripts/grill-state.mjs init --machine autonomous --input "<proposal>"
 ```
 - **If exit code is non-zero (e.g. `INPUT_GATE_HALT`)**: STOP IMMEDIATELY. Output the diagnostic block. Do not proceed.
-- **If exit code is 0**: Note the unique `Dispatch Token` (e.g. `dmad_tok_e4b1`).
+- **If exit code is 0**: Note the unique `Dispatch Token` (e.g. `dmad_tok_e4b1`). State transitions to `S_A1_TOKEN_ISSUE`.
 
 ### Step 2: Deconstruct Axioms
 Deconstruct the proposal into clean software engineering terms:

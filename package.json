@@ -1,6 +1,6 @@
 {
   "name": "@grill-logic/skills",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Epistemic Truth Maintenance and Argument-Driven Premise Validation for Agentic AI Systems",
   "type": "module",
   "license": "MIT",

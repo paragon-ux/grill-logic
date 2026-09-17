@@ -56,13 +56,45 @@ for (const skillDir of skills) {
   console.log(`  ✓ ${skillDir} validated (SKILL.md + openai.yaml)`);
 }
 
-// Verify symmetry with .agents/skills
-const agentSkills = findSkills(".agents/skills");
-if (agentSkills.length !== skills.length) {
-  console.error(`Symmetry mismatch: skills/ has ${skills.length} skills but .agents/skills has ${agentSkills.length}`);
+// Verify byte-for-byte symmetry with .agents/skills
+function getAllFiles(dir) {
+  let results = [];
+  if (!fs.existsSync(dir)) return results;
+  const list = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of list) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results = results.concat(getAllFiles(full));
+    } else {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+const skillFiles = getAllFiles("skills");
+const agentFiles = getAllFiles(".agents/skills");
+
+for (const f of skillFiles) {
+  const rel = path.relative("skills", f);
+  const mirroredFile = path.join(".agents", "skills", rel);
+  if (!fs.existsSync(mirroredFile)) {
+    console.error(`Missing mirrored skill file: ${mirroredFile}`);
+    process.exit(1);
+  }
+  const contentA = fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
+  const contentB = fs.readFileSync(mirroredFile, "utf8").replace(/\r\n/g, "\n");
+  if (contentA !== contentB) {
+    console.error(`Content parity mismatch in mirrored skill file: ${mirroredFile}`);
+    process.exit(1);
+  }
+}
+
+if (skillFiles.length !== agentFiles.length) {
+  console.error(`File count mismatch: skills/ has ${skillFiles.length} files but .agents/skills has ${agentFiles.length}`);
   process.exit(1);
 }
-console.log(`  ✓ .agents/skills mirrored cleanly (${agentSkills.length} skills)`);
+console.log(`  ✓ .agents/skills mirrored cleanly with byte-for-byte content parity (${skillFiles.length} files)`);
 
 // Verify required specifications and guidance
 const requiredFiles = [

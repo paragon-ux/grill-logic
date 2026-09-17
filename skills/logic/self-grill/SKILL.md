@@ -26,6 +26,7 @@ Self-Grill executes **State Machine 1 (Autonomous AI Iterative Self-Prompting)**
 6. **Hard Gating**: If evidence refutes the proposal, `REJECTED` is committed to `LOGICAL_LEDGER.md` and code generation is **hard-blocked**.
 7. **Strict 90/10 Invariant & Asymmetric CoT (ADR-0002)**: The challenger executes Backward Inversion CoT ($C \implies \neg P$) and is strictly forbidden from proposing solutions or recommendations in Round 1 (0% solution). The proposer executes Forward Synthesis CoT ($(P + \text{Bounds}) \implies C'$).
 8. **Frontier-Depletion Closure (ADR-0002)**: Verification terminates when the epistemic frontier of unaddressed contradictions is depleted ($\mathcal{F} = \emptyset$). Max 2 autonomous rounds before mandatory escalation to the human sovereign ($W_{\text{human}}=1.0$).
+9. **Zero User Flags & Autonomous Deduplication (ADR-0003)**: Self-Grill operates hands-free. If a near-duplicate is detected during Step 0, the state engine auto-resolves it (updating in-place if similarity $> 0.85$, or auto-disambiguating if $0.50 \le \text{sim} \le 0.85$). The human is never prompted for CLI flags.
 
 ---
 

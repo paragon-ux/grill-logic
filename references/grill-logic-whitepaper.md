@@ -16,6 +16,7 @@
 3. Separates formal validity from empirical truth (§5.0.1).
 4. Replaces "no counter implies agreement" with a two-party Empirical-Counter Rule and an agreement tally (§5.2).
 5. States the two-party invariant explicitly, including that `/add-logic` itself is always Human ↔ LLM even under Self-Grill (§2.1.1).
+6. Formalizes Pure Negative-Constraint Falsification (ADR-0003), eliminating composite Trojan-horse bypasses, normalizing target evaluation strictly to the conjunction of falsified conclusion and prohibited failure boundary ($C_{\text{rejected}} \cup R_{\text{refute\_boundary}}$), and enforcing the Zero-Flag User Contract.
 
 See §7 for the updated failure-mode remediation matrix (rows 10–14) and `logical-ledger-spec.md` v1.1 for the corresponding schema changes.
 

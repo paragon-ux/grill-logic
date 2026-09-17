@@ -20,6 +20,7 @@ Grill-Logic executes **State Machine 2 (Human Sequential Interview / HITL Engine
 3. **No Sycophancy**: If a user's choice collides with operational realities or physical limits, the agent's next turn must challenge the collision with evidence and offer a corrective fork.
 4. **Behavioral Stagnation Tracking ($S_{\text{human}}$)**: Every user turn is logged for new propositions. If the user repeats their stance for 3 consecutive rounds without introducing new constraints, the engine halts with `HUMAN_STAGNATION_ALERT` requiring a transparent diagnostic query.
 5. **Permanent Invariant Ledger**: Once all branches are settled, confirmed trade-offs are logged to `LOGICAL_LEDGER.md` as `SUPPORTED` invariants so future agent turns cannot regress.
+6. **Zero User Flags (ADR-0003)**: The developer interacts exclusively through conversational dialogue and interactive `ask_question` options. The developer is never prompted or expected to enter CLI flags. The agent handles all state engine commands behind the scenes.
 
 ---
 
@@ -55,13 +56,18 @@ Grill-Logic executes **State Machine 2 (Human Sequential Interview / HITL Engine
 8. Synthesize Specification & Commit to LOGICAL_LEDGER.md
 ```
 
-### Step 1: Initialize Session
+### Step 0: Mandatory Interpretation Gate (`/add-logic`)
+Before mapping decision tree branches, ensure the baseline topic is formulated in `LOGICAL_LEDGER.md`.
+- **If unformulated**: Execute `/add-logic [topic]`. Decompose premises and proposed conclusion, confirm baseline with user verbatim, and commit as `FORMULATED`.
+- **Deterministic Validation**: Run `node scripts/grill-state.mjs validate-nesy --payload '<JSON>'`. Only proceed to the interview if structurally `valid`.
+
+### Step 1: Initialize Session (S_U0_INIT)
 Run the state engine with the design topic:
 ```bash
 node scripts/grill-state.mjs init --machine human --input "<topic>"
 ```
 - **If exit code is non-zero (e.g. `INPUT_GATE_HALT`)**: Stop immediately. Output the diagnostic block.
-- **If exit code is 0**: Proceed to Step 2.
+- **If exit code is 0**: Proceed to Step 2. State transitions to `S_U1_PREMISE_ISOLATION`.
 
 ### Step 2: Map the Decision Tree
 Identify the foundational architectural dependencies. Order them so prerequisites come first:
